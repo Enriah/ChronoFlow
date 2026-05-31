@@ -1,0 +1,193 @@
+import type { ThemeConfig } from './theme.types';
+
+export const minimalTheme: ThemeConfig = {
+  id: 'minimal',
+  name: 'Minimal',
+  type: 'minimal',
+  colors: {
+    background: '#ffffff',
+    surface: '#f8fafc',
+    surfaceHover: '#f1f5f9',
+    primary: '#0f172a',
+    primaryForeground: '#ffffff',
+    text: '#0f172a',
+    textSecondary: '#64748b',
+    border: '#e2e8f0',
+    accent: '#3b82f6',
+  },
+  typography: {
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    titleFont: 'ui-sans-serif, system-ui, sans-serif',
+  },
+  ui: {
+    radius: '12px',
+    borderWeight: '1px',
+    shadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+  },
+  effects: {
+    glow: false,
+    scanlines: false,
+    animations: true,
+    rainColor: 'rgba(15, 23, 42, 0.2)',
+    snowColor: 'rgba(15, 23, 42, 0.1)',
+    sakuraColor: 'rgba(255, 183, 197, 0.4)',
+    starsColor: 'rgba(15, 23, 42, 0.3)',
+    matrixColor: 'rgba(34, 197, 94, 0.5)',
+    electricityColor: 'rgba(59, 130, 246, 0.5)',
+    fogColor: 'rgba(15, 23, 42, 0.05)',
+  },
+};
+
+export const neonTheme: ThemeConfig = {
+  id: 'neon',
+  name: 'Neon',
+  type: 'neon',
+  colors: {
+    background: '#050505',
+    surface: '#121212',
+    surfaceHover: '#1a1a1a',
+    primary: '#00f2ff',
+    primaryForeground: '#000000',
+    text: '#ffffff',
+    textSecondary: '#a0a0a0',
+    border: '#333333',
+    accent: '#ff00ff',
+    glow: 'rgba(0, 242, 255, 0.5)',
+  },
+  typography: {
+    fontFamily: 'system-ui, sans-serif',
+    titleFont: 'system-ui, sans-serif',
+  },
+  ui: {
+    radius: '4px',
+    borderWeight: '2px',
+    shadow: '0 0 15px rgba(0, 242, 255, 0.3)',
+  },
+  effects: {
+    glow: true,
+    scanlines: false,
+    animations: true,
+    rainColor: 'rgba(0, 242, 255, 0.4)',
+    snowColor: 'rgba(255, 255, 255, 0.6)',
+    sakuraColor: 'rgba(255, 0, 255, 0.4)',
+    starsColor: 'rgba(255, 255, 255, 0.8)',
+    matrixColor: 'rgba(0, 255, 65, 0.8)',
+    electricityColor: 'rgba(0, 242, 255, 0.8)',
+    fogColor: 'rgba(0, 242, 255, 0.1)',
+  },
+};
+
+export const terminalTheme: ThemeConfig = {
+  id: 'terminal',
+  name: 'Terminal',
+  type: 'terminal',
+  colors: {
+    background: '#000000',
+    surface: '#0a0a0a',
+    surfaceHover: '#141414',
+    primary: '#00ff41',
+    primaryForeground: '#000000',
+    text: '#00ff41',
+    textSecondary: '#008f11',
+    border: '#003b00',
+    accent: '#ffffff',
+  },
+  typography: {
+    fontFamily: '"Fira Code", monospace',
+    titleFont: '"Fira Code", monospace',
+  },
+  ui: {
+    radius: '0px',
+    borderWeight: '1px',
+    shadow: 'none',
+  },
+  effects: {
+    glow: false,
+    scanlines: true,
+    animations: false,
+    rainColor: 'rgba(0, 255, 65, 0.3)',
+    snowColor: 'rgba(0, 255, 65, 0.2)',
+    sakuraColor: 'rgba(0, 255, 65, 0.2)',
+    starsColor: 'rgba(0, 255, 65, 0.4)',
+    matrixColor: 'rgba(0, 255, 65, 0.8)',
+    electricityColor: 'rgba(0, 255, 65, 0.8)',
+    fogColor: 'rgba(0, 255, 65, 0.1)',
+  },
+};
+
+export const softTheme: ThemeConfig = {
+  id: 'soft',
+  name: 'Soft',
+  type: 'soft',
+  colors: {
+    background: '#fff5f7',
+    surface: '#ffffff',
+    surfaceHover: '#fffafb',
+    primary: '#ff85a1',
+    primaryForeground: '#ffffff',
+    text: '#4a4a4a',
+    textSecondary: '#a8a8a8',
+    border: '#ffe3e8',
+    accent: '#ffc2d1',
+  },
+  typography: {
+    fontFamily: 'system-ui, sans-serif',
+    titleFont: 'system-ui, sans-serif',
+  },
+  ui: {
+    radius: '32px',
+    borderWeight: '0px',
+    shadow: '0 10px 30px rgba(255, 133, 161, 0.1)',
+  },
+  effects: {
+    glow: false,
+    scanlines: false,
+    animations: true,
+    rainColor: 'rgba(255, 133, 161, 0.3)',
+    snowColor: 'rgba(255, 255, 255, 0.8)',
+    sakuraColor: 'rgba(255, 183, 197, 0.6)',
+    starsColor: 'rgba(255, 183, 197, 0.5)',
+    matrixColor: 'rgba(255, 133, 161, 0.4)',
+    electricityColor: 'rgba(255, 133, 161, 0.6)',
+    fogColor: 'rgba(255, 183, 197, 0.2)',
+  },
+};
+export const fantasyTheme: ThemeConfig = {
+  id: 'fantasy',
+  name: 'Fantasy',
+  type: 'fantasy',
+  colors: {
+    background: '#6d6d6d',
+    surface: '#5c3d3d',
+    surfaceHover: '#bb917e',
+    primary: '#b68792',
+    primaryForeground: '#292020',
+    text: '#d3caca',
+    textSecondary: '#a8a8a8',
+    border: '#382b2d',
+    accent: '#2c2325',
+  },
+  typography: {
+    fontFamily: 'system-ui, sans-serif',
+    titleFont: 'system-ui, sans-serif',
+  },
+  ui: {
+    radius: '32px',
+    borderWeight: '0px',
+    shadow: '0 10px 30px rgba(255, 133, 161, 0.1)',
+  },
+  effects: {
+    glow: false,
+    scanlines: false,
+    animations: true,
+    rainColor: 'rgba(255, 255, 255, 0.6)',
+    snowColor: 'rgba(255, 255, 255, 0.8)',
+    sakuraColor: 'rgb(236, 206, 212)',
+    starsColor: 'rgba(255, 255, 255, 0.77)',
+    matrixColor: 'rgba(66, 119, 77, 0.93)',
+    electricityColor: 'rgba(114, 39, 56, 0.6)',
+    fogColor: 'rgb(223, 202, 206)',
+  },
+};  
+
+export const themes = [minimalTheme, neonTheme, terminalTheme, softTheme, fantasyTheme];

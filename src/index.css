@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-background: var(--bg);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+}
+
+:root {
+  /* Variables will be injected by ThemeProvider */
+  transition: all 0.3s ease-in-out;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Neon Type */
+.theme-neon .glow-effect {
+  text-shadow: 0 0 10px var(--primary);
+  box-shadow: 0 0 20px var(--primary);
+}
+
+.theme-neon .glow-text {
+  text-shadow: 0 0 8px var(--primary);
+}
+
+/* Custom rounded for soft theme */
+.theme-soft {
+  --radius: 32px;
+}
+
+/* Terminal Cursor */
+.terminal-cursor::after {
+  content: '_';
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scanline {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(18, 16, 16, 0.1) 50%,
+    transparent 100%
+  );
+  height: 100px;
+  width: 100%;
+  animation: scanline 10s linear infinite;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  pointer-events: none;
+}
