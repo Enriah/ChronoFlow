@@ -1,8 +1,8 @@
 # ChronoFlow
 
-ChronoFlow là một ứng dụng quản lý lịch trình và công việc được xây dựng với hiệu ứng hình ảnh sống động, hỗ trợ tùy biến giao diện mạnh mẽ. Dự án sử dụng bộ công cụ hiện đại để mang lại trải nghiệm mượt mà và linh hoạt trên máy tính.
+ChronoFlow is a schedule and task management application built with immersive visual effects and powerful UI customization support. The project leverages a modern toolset to provide a smooth and flexible desktop experience.
 
-## 🚀 Công nghệ sử dụng
+## 🚀 Tech Stack
 
 - **Frontend:** React 19 + TypeScript + Vite
 - **Desktop Framework:** Tauri v2 (Rust)
@@ -11,56 +11,56 @@ ChronoFlow là một ứng dụng quản lý lịch trình và công việc đư
 - **Icons:** Lucide React
 - **Date Handling:** date-fns
 
-## 🛠️ Hướng dẫn cài đặt cho nhà phát triển
+## 🛠️ Developer Setup Guide
 
-### Điều kiện tiên quyết
-- **Node.js:** Phiên bản LTS mới nhất.
-- **Rust:** Cần thiết để xây dựng ứng dụng Tauri. Cài đặt tại [rustup.rs](https://rustup.rs/).
-- **pnpm:** Trình quản lý gói được khuyến khích sử dụng.
+### Prerequisites
+- **Node.js:** Latest LTS version.
+- **Rust:** Required for building Tauri applications. Install at [rustup.rs](https://rustup.rs/).
+- **pnpm:** Recommended package manager.
 
-### Các bước thực hiện
-1. **Clone dự án:**
+### Steps
+1. **Clone the repository:**
    ```bash
-   git clone <url-cua-du-an>
+   git clone <repository-url>
    cd ScheduleApp
    ```
 
-2. **Cài đặt dependencies:**
+2. **Install dependencies:**
    ```bash
    pnpm install
    ```
 
-3. **Chạy ở chế độ phát triển (Development):**
+3. **Run in development mode:**
    ```bash
    pnpm tauri dev
    ```
 
-4. **Xây dựng ứng dụng (Build):**
+4. **Build the application:**
    ```bash
    pnpm tauri build
    ```
 
-## 🧩 Hướng dẫn Mod dự án
+## 🧩 Modding Guide
 
-"Mod" trong dự án này có nghĩa là mở rộng hoặc chỉnh sửa các tính năng cốt lõi. Dưới đây là hướng dẫn cơ bản:
+"Modding" in this project refers to extending or modifying core features. Here is a basic overview:
 
-### Cấu trúc thư mục quan trọng
-- `src/components/`: Nơi chứa các UI components. Bạn có thể thêm các widget mới tại đây.
-- `src/store/`: Quản lý trạng thái ứng dụng bằng Zustand. Nếu bạn muốn thêm logic lưu trữ mới, hãy tạo một file `use...Store.ts` tại đây.
-- `src/models/`: Định nghĩa các interface và kiểu dữ liệu cho lịch trình, tác vụ.
-- `src/hooks/`: Các custom hooks xử lý logic như theo dõi phiên làm việc, thông báo.
+### Important Directory Structure
+- `src/components/`: Contains UI components. You can add new widgets here.
+- `src/store/`: State management via Zustand. Create a `use...Store.ts` file here for new storage logic.
+- `src/models/`: Interfaces and data types for schedules and tasks.
+- `src/hooks/`: Custom hooks for logic like session tracking and notifications.
 
-### Thêm tính năng mới
-1. **Định nghĩa Model:** Nếu tính năng mới cần dữ liệu mới, hãy cập nhật hoặc thêm file trong `src/models/`.
-2. **Quản lý trạng thái:** Cập nhật store tương ứng trong `src/store/` để xử lý dữ liệu.
-3. **Tạo UI:** Xây dựng component mới trong `src/components/` và tích hợp vào `Dashboard.tsx` hoặc các view tương ứng.
+### Adding New Features
+1. **Define Models:** If the new feature requires new data structures, update or add files in `src/models/`.
+2. **Manage State:** Update the corresponding store in `src/store/` to handle data logic.
+3. **Create UI:** Build new components in `src/components/` and integrate them into `Dashboard.tsx` or relevant views.
 
-## 🎨 Hướng dẫn thêm Theme
+## 🎨 Theme Customization Guide
 
-Dự án hỗ trợ hệ thống theme linh hoạt. Bạn có thể dễ dàng thêm giao diện mới theo các bước sau:
+The project features a flexible theme system. You can easily add new themes following these steps:
 
-### 1. Định nghĩa Theme mới
-Mở file `src/themes/configs.ts` và tạo một đối tượng `ThemeConfig` mới. Ví dụ:
+### 1. Define a New Theme
+Open `src/themes/configs.ts` and create a new `ThemeConfig` object. Example:
 
 ```typescript
 export const myCustomTheme: ThemeConfig = {
@@ -91,7 +91,7 @@ export const myCustomTheme: ThemeConfig = {
     glow: true,
     scanlines: false,
     animations: true,
-    // Màu sắc cho các hiệu ứng hạt (particles)
+    // Particle effect colors
     rainColor: 'rgba(255, 85, 85, 0.3)',
     snowColor: 'rgba(255, 255, 255, 0.5)',
     sakuraColor: 'rgba(255, 183, 197, 0.5)',
@@ -103,8 +103,8 @@ export const myCustomTheme: ThemeConfig = {
 };
 ```
 
-### 2. Đăng ký Theme
-Thêm theme bạn vừa tạo vào mảng `themes` ở cuối file `src/themes/configs.ts`:
+### 2. Register the Theme
+Add your newly created theme to the `themes` array at the end of `src/themes/configs.ts`:
 
 ```typescript
 export const themes = [
@@ -113,13 +113,13 @@ export const themes = [
   terminalTheme, 
   softTheme, 
   fantasyTheme,
-  myCustomTheme // Thêm vào đây
+  myCustomTheme // Add it here
 ];
 ```
 
-### 3. Cập nhật Type (Nếu cần)
-Nếu bạn sử dụng một `type` mới, hãy cập nhật kiểu dữ liệu `ThemeType` trong `src/themes/theme.types.ts`.
+### 3. Update Types (If necessary)
+If you use a new `type`, update the `ThemeType` union in `src/themes/theme.types.ts`.
 
-## 📄 Giấy phép
+## 📄 License
 
-Dự án này được phân phối dưới giấy phép **MIT**. Xem file `LICENSE` để biết thêm chi tiết.
+This project is distributed under the **MIT** License. See the `LICENSE` file for more details.
