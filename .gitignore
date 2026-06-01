@@ -1,20 +1,48 @@
+# Dependencies
+node_modules
+/.pnp
+.pnpm-debug.log*
+.pnp.js
+
+# Build artifacts
+dist
+dist-ssr
+build
+bin
+obj
+out
+
+# Tauri specific
+src-tauri/target
+src-tauri/gen
+src-tauri/capabilities/gen
+src-tauri/bin
+*.app
+*.exe
+*.dmg
+*.deb
+*.rpm
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env*
+
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Editor / IDE
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 .idea
 .DS_Store
 *.suo
@@ -22,8 +50,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.patch
+*.diff
+Thumbs.db
+desktop.ini
 
-# Tauri
-src-tauri/target
-src-tauri/bin
-src-tauri/gen
+# TypeScript
+*.tsbuildinfo
+
+# Debugging
+.tauri-dev

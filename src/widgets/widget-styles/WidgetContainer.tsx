@@ -48,8 +48,8 @@ export const WidgetContainer: React.FC<WidgetContainerProps> = ({
           background: `linear-gradient(135deg, rgba(var(--primary-rgb), ${opacity * 0.5}), rgba(var(--accent-rgb), ${opacity * 0.5}))` 
         };
       case 'glass':
-        // Optimize: Limit blur in performance mode
-        const effectiveBlur = performanceMode ? Math.min(blur, 4) : blur;
+        // Optimize: Limit blur in performance mode or high intensity
+        const effectiveBlur = performanceMode ? 0 : Math.min(blur, 12);
         return { 
           ...baseStyle, 
           backgroundColor: `rgba(var(--surface-rgb, 255, 255, 255), ${opacity})`,

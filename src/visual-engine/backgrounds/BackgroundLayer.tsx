@@ -14,12 +14,13 @@ export const BackgroundLayer: React.FC = () => {
     return PersistentAssetService.getAssetUrl(background.url || '');
   }, [background.url]);
 
-  // Optimize: Disable blur in performance mode to save GPU
-  const effectiveBlur = performanceMode ? 0 : background.blur;
+  // Optimize: Aggressively cap blur and disable in performance mode
+  const effectiveBlur = performanceMode ? 0 : Math.min(background.blur, 10);
 
   const style: React.CSSProperties = {
     opacity: background.opacity,
     filter: effectiveBlur > 0 ? `blur(${effectiveBlur}px) brightness(${background.brightness})` : `brightness(${background.brightness})`,
+    transition: performanceMode ? 'none' : 'opacity 0.5s ease-in-out', // Disable transitions for performance
   };
 
   if (background.type === 'none') {

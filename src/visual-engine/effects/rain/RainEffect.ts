@@ -42,7 +42,7 @@ export class RainEffect implements EffectModule {
   private drops: Drop[] = [];
   private width: number = 0;
   private height: number = 0;
-  private maxDrops: number = 400; // Reduced from 800
+  private maxDrops: number = 200; // Reduced further for GPU safety
   private intensity: number = 0.5;
 
   initialize(ctx: CanvasRenderingContext2D): void {
@@ -51,19 +51,22 @@ export class RainEffect implements EffectModule {
     this.drops = Array.from({ length: this.maxDrops }, () => new Drop(this.width, this.height));
   }
 
-  update(_deltaTime: number, intensity: number, speed: number, _performanceMode: boolean): void {
+  update(_deltaTime: number, intensity: number, speed: number, performanceMode: boolean): void {
     this.intensity = intensity;
-    const activeCount = Math.floor(this.maxDrops * intensity);
+    // Reduce active drops in performance mode
+    const limitMultiplier = performanceMode ? 0.5 : 1;
+    const activeCount = Math.floor(this.maxDrops * intensity * limitMultiplier);
+    
     for (let i = 0; i < activeCount; i++) {
-      if (!this.drops[i]) {
-        this.drops[i] = new Drop(this.width, this.height);
-      }
       this.drops[i].update(this.width, this.height, speed * 1.5);
     }
   }
 
-  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, _performanceMode: boolean): void {
-    const activeCount = Math.floor(this.maxDrops * this.intensity);
+  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, performanceMode: boolean): void {
+    const limitMultiplier = performanceMode ? 0.5 : 1;
+    const activeCount = Math.floor(this.maxDrops * this.intensity * limitMultiplier);
+    
+    ctx.beginPath(); // Batch drawing for minor boost
     for (let i = 0; i < activeCount; i++) {
       this.drops[i]?.render(ctx, theme.rainColor);
     }

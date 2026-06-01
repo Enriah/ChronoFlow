@@ -48,8 +48,10 @@ export class StarsEffect implements EffectModule {
   private stars: Star[] = [];
   private width: number = 0;
   private height: number = 0;
-  private maxStars: number = 200; // Reduced from 400
+  private maxStars: number = 150; // Reduced for performance
   private intensity: number = 0.5;
+  private cachedColor: { r: string, g: string, b: string } | null = null;
+  private lastColor: string = '';
 
   initialize(ctx: CanvasRenderingContext2D): void {
     this.width = ctx.canvas.width;
@@ -57,21 +59,40 @@ export class StarsEffect implements EffectModule {
     this.stars = Array.from({ length: this.maxStars }, () => new Star(this.width, this.height));
   }
 
-  update(deltaTime: number, intensity: number, speed: number, _performanceMode: boolean): void {
+  private updateColorCache(color: string) {
+    if (this.lastColor === color && this.cachedColor) return;
+    this.lastColor = color;
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      this.cachedColor = { r: match[1], g: match[2], b: match[3] };
+    }
+  }
+
+  update(deltaTime: number, intensity: number, speed: number, performanceMode: boolean): void {
     this.intensity = intensity;
-    const activeCount = Math.floor(this.maxStars * intensity);
+    const limitMultiplier = performanceMode ? 0.4 : 1;
+    const activeCount = Math.floor(this.maxStars * intensity * limitMultiplier);
+    
     for (let i = 0; i < activeCount; i++) {
-      if (!this.stars[i]) {
-        this.stars[i] = new Star(this.width, this.height);
-      }
       this.stars[i].update(deltaTime, speed);
     }
   }
 
-  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, _performanceMode: boolean): void {
-    const activeCount = Math.floor(this.maxStars * this.intensity);
+  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, performanceMode: boolean): void {
+    this.updateColorCache(theme.starsColor);
+    const limitMultiplier = performanceMode ? 0.4 : 1;
+    const activeCount = Math.floor(this.maxStars * this.intensity * limitMultiplier);
+
     for (let i = 0; i < activeCount; i++) {
-      this.stars[i]?.render(ctx, theme.starsColor);
+      const star = this.stars[i];
+      let currentOpacity = star.opacity * (0.5 + Math.sin(star.twinklePhase) * 0.5);
+      
+      if (this.cachedColor) {
+        ctx.fillStyle = `rgba(${this.cachedColor.r}, ${this.cachedColor.g}, ${this.cachedColor.b}, ${currentOpacity})`;
+      } else {
+        ctx.fillStyle = theme.starsColor;
+      }
+      ctx.fillRect(star.x - star.size/2, star.y - star.size/2, star.size, star.size);
     }
   }
 

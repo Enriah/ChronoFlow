@@ -65,6 +65,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
       .sort((a, b) => a.startTime - b.startTime);
 
+    // Save cleaned up schedules back to storage
+    LocalStorageService.saveSchedules(schedules);
+
     // Init services
     AudioService.init();
     NotificationService.init();
@@ -96,9 +99,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (s.recurring) return true;
       // Keep if it's in the planner tasks for today
       if (plannerIds.has(s.id)) return true;
-      // Keep if it was manually added today (it won't be in plannerIds but has date === today)
-      // Actually, if it's not in planner and not recurring, we should probably check if it was manually added.
-      // For now, let's assume if it's not in planner and not recurring, it might have been deleted from planner.
+      // Keep if it was manually added today
+      if (s.date === today) return true;
+      
       return false; 
     });
 
@@ -111,9 +114,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const [startH, startM] = (pt.startTime || '00:00').split(':').map(Number);
       const [endH, endM] = (pt.endTime || '00:00').split(':').map(Number);
       
-      const now = new Date();
-      const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startH, startM).getTime();
-      const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endH, endM).getTime();
+      // Use the task's own date for correct timestamping
+      const [year, month, day] = pt.date.split('-').map(Number);
+      const startTime = new Date(year, month - 1, day, startH, startM).getTime();
+      const endTime = new Date(year, month - 1, day, endH, endM).getTime();
 
       const updatedSchedule: Schedule = {
         id: pt.id,
@@ -157,17 +161,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   tick: () => {
     const { schedules, lastTriggeredTaskId, lastWarningMs, today, isRunning } = get();
-    if (!isRunning) return;
     
     const now = Date.now();
     const currentToday = getTodayDateString();
 
-    // Midnight rollover detection
+    // Midnight rollover detection - MUST run even if !isRunning
     if (currentToday !== today) {
       set({ today: currentToday, schedules: [] });
-      get().hydrate(); // Re-hydrate will filter and sync for the new day
+      get().hydrate(); // Re-hydrate will filter, sync, and save the new day state
       return;
     }
+
+    if (!isRunning) return;
     
     const { currentTask, nextTask } = getCurrentTask(now, schedules);
     

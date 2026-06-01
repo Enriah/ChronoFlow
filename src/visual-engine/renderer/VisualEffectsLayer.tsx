@@ -23,10 +23,10 @@ export const VisualEffectsLayer: React.FC = () => {
     // Apply performance settings
     visualEngine.setPerformanceMode(performanceMode);
     if (performanceMode) {
-      visualEngine.setRenderScale(0.5);
-      visualEngine.setTargetFPS(20);
+      visualEngine.setRenderScale(0.4); // Down from 0.5
+      visualEngine.setTargetFPS(15);    // Down from 20
     } else {
-      visualEngine.setRenderScale(0.75);
+      visualEngine.setRenderScale(0.7); // Down from 0.75
       visualEngine.setTargetFPS(30);
     }
   }, [performanceMode]);

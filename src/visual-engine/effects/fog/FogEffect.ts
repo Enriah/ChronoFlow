@@ -34,15 +34,17 @@ export class FogEffect implements EffectModule {
 
     ctx.fillStyle = gradient;
     
-    // Simulate moving fog with multiple layers - reduce in performance mode
-    const layers = performanceMode ? 1 : 3;
+    // Simulate moving fog with multiple layers - reduced for performance
+    const layers = performanceMode ? 1 : 2;
     for (let i = 0; i < layers; i++) {
       const shift = (this.offset * (1 + i * 0.2)) % this.width;
+      ctx.globalAlpha = 1 / (i + 1); // Fade secondary layers
       ctx.save();
       ctx.translate(shift - this.width, 0);
       ctx.fillRect(0, 0, this.width * 2, this.height);
       ctx.restore();
     }
+    ctx.globalAlpha = 1.0;
   }
 
   resize(width: number, height: number): void {

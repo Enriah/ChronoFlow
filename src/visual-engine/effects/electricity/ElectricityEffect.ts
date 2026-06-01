@@ -58,12 +58,9 @@ class Bolt {
       ctx.shadowColor = color;
     }
 
-    ctx.lineWidth = performanceMode ? 1 : 2;
+    ctx.lineWidth = performanceMode ? 1.5 : 2.5;
     
-    // Optimize: shadowBlur is very expensive, disable in performance mode
-    if (!performanceMode) {
-      ctx.shadowBlur = 10;
-    }
+    // shadowBlur is removed because it's a massive GPU killer in full-screen
     
     ctx.beginPath();
     ctx.moveTo(this.segments[0].x, this.segments[0].y);
@@ -71,8 +68,6 @@ class Bolt {
       ctx.lineTo(this.segments[i].x, this.segments[i].y);
     }
     ctx.stroke();
-    
-    ctx.shadowBlur = 0;
   }
 }
 

@@ -29,6 +29,7 @@
     "fs:allow-mkdir",
     "fs:allow-read",
     "fs:allow-write",
+    "fs:allow-exists",
     "core:path:default"
   ]
 }

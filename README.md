@@ -1,6 +1,27 @@
 # ChronoFlow
 
-ChronoFlow is a schedule and task management application built with immersive visual effects and powerful UI customization support. The project leverages a modern toolset to provide a smooth and flexible desktop experience.
+ChronoFlow is a next-generation schedule and task management application designed for focus and immersion. Built with a powerful visual engine and a highly customizable UI, it transforms your daily routine into a personalized, atmospheric experience.
+
+![Main App Dashboard](./screenshots/MainApp.png)
+
+## ✨ Key Features
+
+### 🌌 Immersive Atmosphere Builder
+Design your perfect workspace with dynamic background effects. Choose from **Rain, Sakura, Snow, Stars, Matrix, Electricity, and Fog**. Control every detail from intensity and speed to opacity, ensuring your environment matches your flow state.
+
+### 🎨 Total UI Customization
+Tailor every widget to your aesthetic. Chronoflow supports **Glassmorphism, Gradients, and Custom Image backgrounds** for all UI elements. Tweak corner radii, blur depth, inner glows, and shadow intensities to create a truly unique desktop presence.
+
+### 📅 Advanced Scheduling & Planning
+- **Smart Timeline:** Visualize your day with an interactive timeline that syncs in real-time.
+- **Integrated Planner:** Plan ahead with a full calendar view, categories, and progress tracking.
+- **Linked Actions:** Automatically open URLs, applications, or folders when a task starts to streamline your workflow.
+
+### 🎵 Intelligent Audio Engine
+Never miss a transition with a granular notification system. Assign custom sounds to events like "Task Started" or "Session Ending," and manage global volumes for a non-intrusive focus experience.
+
+### 📊 Productivity Insights
+Track your progress with weekly focus statistics and activity rankings. Understand where your time goes and optimize your habits over time.
 
 ## 🚀 Tech Stack
 

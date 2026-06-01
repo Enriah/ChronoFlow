@@ -26,9 +26,10 @@ export class VisualEngine {
   private isFocused: boolean = true;
   private dpr: number = 1;
   private performanceMode: boolean = false;
+  private MAX_WIDTH: number = 1600; // Limit resolution for GPU safety
 
   constructor() {
-    this.dpr = Math.min(window.devicePixelRatio, 1.5); // Clamp DPR to 1.5 max
+    this.dpr = Math.min(window.devicePixelRatio, 1.25); 
     this.setupVisibilityListeners();
   }
 
@@ -63,10 +64,16 @@ export class VisualEngine {
   private handleResize = () => {
     if (!this.canvas) return;
     
-    // Scale canvas resolution down for efficiency
-    const width = window.innerWidth * this.dpr * this.renderScale;
-    const height = window.innerHeight * this.dpr * this.renderScale;
+    // Scale canvas resolution down for efficiency, cap at MAX_WIDTH
+    let width = window.innerWidth * this.dpr * this.renderScale;
+    let height = window.innerHeight * this.dpr * this.renderScale;
     
+    if (width > this.MAX_WIDTH) {
+      const ratio = this.MAX_WIDTH / width;
+      width = this.MAX_WIDTH;
+      height *= ratio;
+    }
+
     this.canvas.width = width;
     this.canvas.height = height;
     
