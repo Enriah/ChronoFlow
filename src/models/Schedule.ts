@@ -14,4 +14,5 @@ export type Schedule = {
   linkedApp?: string;
   linkedUrl?: string;
   notificationsEnabled?: boolean;
+  fromPlanner?: boolean;
 };

@@ -16,6 +16,7 @@ function App() {
   const hydrateAnalytics = useAnalyticsStore(state => state.hydrate);
   
   const tick = useAppStore(state => state.tick);
+  const checkRollover = useAppStore(state => state.checkRollover);
 
   const [widgetType, setWidgetType] = useState<string | null>(null);
 
@@ -44,15 +45,17 @@ function App() {
   }, [hydrateApp, hydratePlanner, hydrateAnalytics]);
 
   useEffect(() => {
-    // ALWAYS run the tick interval for rollover detection
-    if (widgetType) return;
-
+    // ALWAYS run the interval for rollover detection, even in widgets
     const interval = setInterval(() => {
-      tick();
-    }, 1000); // 1s is enough for rollover and less battery intensive than 100ms when idle
+      if (widgetType) {
+        checkRollover();
+      } else {
+        tick();
+      }
+    }, 1000); 
 
     return () => clearInterval(interval);
-  }, [tick, widgetType]);
+  }, [tick, checkRollover, widgetType]);
 
   // Render Widget UI if we are in a widget window
   if (widgetType === 'countdown') return <CountdownFloating />;

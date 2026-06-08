@@ -31,6 +31,7 @@ interface AppState {
   deleteSchedule: (id: string) => void;
   skipTask: () => void;
   syncWithPlanner: () => void;
+  checkRollover: () => boolean;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -85,24 +86,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     const plannerTasks = LocalStorageService.loadPlannedTasks();
     
     const todayPlannedTasks = plannerTasks.filter(t => t.date === today);
+    const plannerIds = new Set(todayPlannedTasks.map(t => t.id));
     
     let newSchedules = [...schedules];
     let changed = false;
 
-    // 1. Remove tasks that are no longer in the planner for today
-    // (but only if they came from the planner, i.e., they aren't marked as 'recurring')
-    const plannerIds = new Set(todayPlannedTasks.map(t => t.id));
+    // 1. Remove tasks that are marked as fromPlanner but are no longer in the planner for today
     const schedulesBeforeCount = newSchedules.length;
-    
     newSchedules = newSchedules.filter(s => {
-      // Keep if recurring
-      if (s.recurring) return true;
-      // Keep if it's in the planner tasks for today
-      if (plannerIds.has(s.id)) return true;
-      // Keep if it was manually added today
-      if (s.date === today) return true;
-      
-      return false; 
+      // If it's from the planner, it MUST be in today's planner list to stay
+      if (s.fromPlanner && !plannerIds.has(s.id)) return false;
+      return true;
     });
 
     if (newSchedules.length !== schedulesBeforeCount) changed = true;
@@ -114,7 +108,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const [startH, startM] = (pt.startTime || '00:00').split(':').map(Number);
       const [endH, endM] = (pt.endTime || '00:00').split(':').map(Number);
       
-      // Use the task's own date for correct timestamping
       const [year, month, day] = pt.date.split('-').map(Number);
       const startTime = new Date(year, month - 1, day, startH, startM).getTime();
       const endTime = new Date(year, month - 1, day, endH, endM).getTime();
@@ -132,20 +125,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         linkedApp: '',
         linkedUrl: '',
         notificationsEnabled: true,
-        linkedActions: existing?.linkedActions // Preserve linked actions if they exist
+        fromPlanner: true,
+        linkedActions: existing?.linkedActions
       };
 
       if (!existing) {
         newSchedules.push(updatedSchedule);
         changed = true;
       } else {
-        // Check if anything changed
         if (
           existing.title !== updatedSchedule.title ||
           existing.startTime !== updatedSchedule.startTime ||
           existing.endTime !== updatedSchedule.endTime ||
           existing.completed !== updatedSchedule.completed ||
-          existing.color !== updatedSchedule.color
+          existing.color !== updatedSchedule.color ||
+          !existing.fromPlanner
         ) {
           newSchedules = newSchedules.map(s => s.id === pt.id ? updatedSchedule : s);
           changed = true;
@@ -154,25 +148,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     if (changed) {
+      newSchedules.sort((a, b) => a.startTime - b.startTime);
       set({ schedules: newSchedules });
       LocalStorageService.saveSchedules(newSchedules);
     }
   },
 
   tick: () => {
-    const { schedules, lastTriggeredTaskId, lastWarningMs, today, isRunning } = get();
-    
-    const now = Date.now();
-    const currentToday = getTodayDateString();
+    if (get().checkRollover()) return;
 
-    // Midnight rollover detection - MUST run even if !isRunning
-    if (currentToday !== today) {
-      set({ today: currentToday, schedules: [] });
-      get().hydrate(); // Re-hydrate will filter, sync, and save the new day state
+    const { schedules, lastTriggeredTaskId, lastWarningMs, isRunning } = get();
+    const now = Date.now();
+
+    if (!isRunning) {
+      set({ now });
       return;
     }
-
-    if (!isRunning) return;
     
     const { currentTask, nextTask } = getCurrentTask(now, schedules);
     
@@ -237,6 +228,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       remainingMs, 
       progress: Math.min(100, Math.max(0, progress)) 
     });
+  },
+
+  checkRollover: () => {
+    const { today } = get();
+    const currentToday = getTodayDateString();
+
+    if (currentToday !== today) {
+      set({ today: currentToday, schedules: [] });
+      get().hydrate(); // Re-hydrate will filter, sync, and save the new day state
+      return true;
+    }
+    return false;
   },
 
   toggleTimer: () => set((state) => ({ isRunning: !state.isRunning })),

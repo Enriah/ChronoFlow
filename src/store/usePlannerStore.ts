@@ -16,7 +16,24 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   tasks: [],
 
   hydrate: () => {
-    const tasks = LocalStorageService.loadPlannedTasks();
+    const rawTasks = LocalStorageService.loadPlannedTasks();
+    
+    // Cleanup: Remove tasks older than 30 days to prevent storage bloat
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    
+    const tasks = rawTasks.filter(t => {
+      // t.date is YYYY-MM-DD
+      const [year, month, day] = t.date.split('-').map(Number);
+      const taskDate = new Date(year, month - 1, day);
+      return taskDate >= thirtyDaysAgo;
+    });
+
+    if (tasks.length !== rawTasks.length) {
+      LocalStorageService.savePlannedTasks(tasks);
+    }
+
     set({ tasks });
   },
 

@@ -3,6 +3,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useWidgetStore } from '../../store/useWidgetStore';
+import { usePlannerStore } from '../../store/usePlannerStore';
 
 class SyncManagerClass {
   private isWidget = false;
@@ -38,6 +39,11 @@ class SyncManagerClass {
       emit('sync-widget-state', state);
     });
 
+    // Sync PlannerStore
+    usePlannerStore.subscribe((state) => {
+      emit('sync-planner-state', state);
+    });
+
     // Listen for actions from widgets
     listen('widget-action', (event: any) => {
       const { type, payload } = event.payload;
@@ -59,6 +65,11 @@ class SyncManagerClass {
     // Listen for WidgetStore updates
     listen('sync-widget-state', (event: any) => {
       useWidgetStore.setState(event.payload);
+    });
+
+    // Listen for PlannerStore updates
+    listen('sync-planner-state', (event: any) => {
+      usePlannerStore.setState(event.payload);
     });
   }
 
