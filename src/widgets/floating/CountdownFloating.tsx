@@ -38,7 +38,9 @@ export function CountdownFloating() {
     return (
       <FloatingWidgetContainer type="countdown" title="Focus Monitor">
         <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-          <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Idle Mode</span>
+          <span className="text-xs font-bold text-text/40 uppercase tracking-widest">
+            {isTerminal ? "[IDLE_MODE]" : "Idle Mode"}
+          </span>
         </div>
       </FloatingWidgetContainer>
     );
@@ -67,18 +69,18 @@ export function CountdownFloating() {
       <div className="p-4 h-full flex flex-col justify-between">
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Remaining</span>
+            <span className="text-[9px] font-black text-text/40 uppercase tracking-[0.2em]">Remaining</span>
             <div className="flex items-baseline gap-1">
               <div className={clsx(
                 "text-3xl font-black tracking-tighter tabular-nums",
-                isTerminal ? "text-primary font-mono" : "text-white"
+                isTerminal ? "text-primary font-mono" : "text-text"
               )}>
                 {formattedTime}
               </div>
               {showMilliseconds && (
                 <div className={clsx(
                   "text-lg font-black tracking-tighter tabular-nums opacity-40",
-                  isTerminal ? "text-primary font-mono" : "text-white"
+                  isTerminal ? "text-primary font-mono" : "text-text"
                 )}>
                   .{ms.toString().padStart(2, '0')}
                 </div>
@@ -89,13 +91,23 @@ export function CountdownFloating() {
           <div className="flex gap-2">
             <button 
               onClick={() => SyncManager.dispatchAction('toggleTimer')}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 border border-white/5"
+              className={clsx(
+                "w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 border",
+                isTerminal 
+                  ? "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" 
+                  : "bg-surface border-border text-text hover:bg-surface-hover"
+              )}
             >
               {isRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
             </button>
             <button 
               onClick={() => SyncManager.dispatchAction('skipTask')}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all active:scale-95 border border-white/5"
+              className={clsx(
+                "w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 border",
+                isTerminal 
+                  ? "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" 
+                  : "bg-surface border-border text-text hover:bg-surface-hover"
+              )}
             >
               <SkipForward className="w-3.5 h-3.5 fill-current" />
             </button>
@@ -103,16 +115,19 @@ export function CountdownFloating() {
         </div>
 
         <div className="space-y-1.5 mt-2">
-          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+          <div className={clsx(
+            "h-1.5 w-full rounded-full overflow-hidden border",
+            isTerminal ? "bg-primary/5 border-primary/10" : "bg-surface border-border"
+          )}>
             <div 
               className={clsx(
-                "h-full rounded-full transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(255,255,255,0.2)]",
-                isTerminal ? "bg-primary" : "bg-white"
+                "h-full rounded-full transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(var(--primary-rgb),0.2)]",
+                "bg-primary"
               )}
               style={{ width: `${smoothProgress}%` }}
             />
           </div>
-          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-white/30">
+          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-text/30">
             <span>{currentTask.title}</span>
             <span>{Math.round(smoothProgress)}%</span>
           </div>

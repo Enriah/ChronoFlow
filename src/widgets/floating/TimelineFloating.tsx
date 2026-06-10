@@ -27,7 +27,7 @@ export function TimelineFloating() {
                     "p-3 rounded-xl border transition-all",
                     isActive 
                       ? "bg-primary/20 border-primary text-primary" 
-                      : "bg-white/5 border-white/5 text-white/60"
+                      : "bg-surface/40 border-border/50 text-text/60"
                   )}
                 >
                   <div className="flex justify-between items-start">

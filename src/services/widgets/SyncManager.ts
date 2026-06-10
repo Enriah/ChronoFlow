@@ -73,13 +73,17 @@ class SyncManagerClass {
     });
   }
 
-  private handleWidgetAction(type: string, _payload: any) {
+  private async handleWidgetAction(type: string, _payload: any) {
     switch (type) {
       case 'toggleTimer':
         useAppStore.getState().toggleTimer();
         break;
       case 'skipTask':
         useAppStore.getState().skipTask();
+        break;
+      case 'closeWidget':
+        const { WidgetManager } = await import('./WidgetManager');
+        WidgetManager.closeWidget(_payload);
         break;
       // Add more as needed
     }

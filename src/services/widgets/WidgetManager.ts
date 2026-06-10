@@ -50,9 +50,24 @@ class WidgetManagerClass {
     const label = `widget-${type}`;
     const { settings } = useWidgetStore.getState();
 
+    // Secondary check: Ensure label is not already taken in Tauri's window manager
+    try {
+      const allWindows = await getAllWebviewWindows();
+      const existingWin = allWindows.find(w => w.label === label);
+      if (existingWin) {
+        console.log(`[WidgetManager] Label ${label} already taken, recovering and focusing...`);
+        this.windows.set(type, existingWin);
+        await existingWin.show();
+        await existingWin.setFocus();
+        return;
+      }
+    } catch (e) {
+      console.warn(`[WidgetManager] Failed to check for existing windows`, e);
+    }
+
     console.log(`[WidgetManager] Creating new WebviewWindow for ${type} with label ${label}`);
     try {
-      const url = `${window.location.origin}/index.html?widget=${type}`;
+      const url = `index.html?widget=${type}`;
       
       win = new WebviewWindow(label, {
         url,
@@ -64,31 +79,33 @@ class WidgetManagerClass {
         transparent: true,
         alwaysOnTop: settings.alwaysOnTop,
         shadow: false,
-        skipTaskbar: false,
         visible: false,
       });
 
       this.windows.set(type, win);
       useWidgetStore.getState().registerWidget(type);
 
-      // In Tauri v2, we can just wait for a bit or use the created event
-      // but show() after a small delay is often more reliable for transparency to kick in
-      setTimeout(async () => {
-        try {
-          await win?.show();
-          if (settings.alwaysOnTop) {
-            await win?.setAlwaysOnTop(true);
-          }
-        } catch (e) {
-          console.error(`[WidgetManager] Error showing window ${type}:`, e);
-        }
-      }, 200);
-
+      // Register close listener
       win.onCloseRequested(() => {
         console.log(`[WidgetManager] Widget ${type} close requested`);
         this.windows.delete(type);
         useWidgetStore.getState().unregisterWidget(type);
       });
+
+      // Show after a small delay to allow transparency and styles to initialize
+      setTimeout(async () => {
+        try {
+          if (win) {
+            await win.show();
+            if (settings.alwaysOnTop) {
+              await win.setAlwaysOnTop(true);
+            }
+            console.log(`[WidgetManager] Widget ${type} shown successfully`);
+          }
+        } catch (e) {
+          console.error(`[WidgetManager] Error showing window ${type}:`, e);
+        }
+      }, 200);
 
       win.once('tauri://error', (e) => {
         console.error(`[WidgetManager] ERROR: Failed to create widget ${type}`, e);

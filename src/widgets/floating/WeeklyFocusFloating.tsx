@@ -30,15 +30,15 @@ export function WeeklyFocusFloating() {
       <div className="p-6 h-full flex flex-col justify-between">
         <div className="flex items-center justify-between mb-6">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Total Focus</span>
+            <span className="text-[10px] font-black text-text/40 uppercase tracking-[0.2em]">Total Focus</span>
             <div className={clsx(
               "text-3xl font-black tracking-tighter",
-              isTerminal ? "text-primary font-mono" : "text-white"
+              isTerminal ? "text-primary font-mono" : "text-text"
             )}>
               {totalHours.toFixed(1)}h
             </div>
           </div>
-          <BarChart3 className={clsx("w-8 h-8", isTerminal ? "text-primary" : "text-white/20")} />
+          <BarChart3 className={clsx("w-8 h-8", isTerminal ? "text-primary" : "text-primary/40")} />
         </div>
 
         <div className="flex-1 flex items-end justify-between gap-2 h-32 mb-4">
@@ -47,17 +47,17 @@ export function WeeklyFocusFloating() {
               <div 
                 className={clsx(
                   "w-full rounded-t-md transition-all duration-500",
-                  isTerminal ? "bg-primary/40 border-t border-primary" : "bg-white/20 hover:bg-white/40"
+                  isTerminal ? "bg-primary/40 border-t border-primary" : "bg-primary/30 hover:bg-primary/50"
                 )}
                 style={{ height: `${(stat.hours / maxHours) * 100}%` }}
               />
-              <span className="text-[8px] font-black uppercase text-white/30 tracking-widest">{stat.day}</span>
+              <span className="text-[8px] font-black uppercase text-text/30 tracking-widest">{stat.day}</span>
             </div>
           ))}
         </div>
 
-        <div className="pt-4 border-t border-white/5">
-          <p className="text-[9px] font-medium text-white/40 leading-relaxed italic">
+        <div className="pt-4 border-t border-border/20">
+          <p className="text-[9px] font-medium text-text/40 leading-relaxed italic">
             "Focus is a muscle."
           </p>
         </div>

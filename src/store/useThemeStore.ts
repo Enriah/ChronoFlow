@@ -237,9 +237,13 @@ export const useThemeStore = create<ThemeState>()(
       })),
 
       savePreset: (name: string) => {
+        const id = typeof crypto.randomUUID === 'function' 
+          ? crypto.randomUUID() 
+          : Math.random().toString(36).substring(2, 15);
+          
         const newPreset: SavedPreset = {
           ...JSON.parse(JSON.stringify(get().draftEnvironment)),
-          id: crypto.randomUUID(),
+          id,
           name,
           isCustom: true
         };

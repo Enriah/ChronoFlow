@@ -5,7 +5,7 @@ import { usePlannerStore } from './store/usePlannerStore';
 import { useAnalyticsStore } from './store/useAnalyticsStore';
 import { useSessionTracker } from './hooks/useSessionTracker';
 import { SyncManager } from './services/widgets/SyncManager';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownFloating } from './widgets/floating/CountdownFloating';
 import { TimelineFloating } from './widgets/floating/TimelineFloating';
 import { WeeklyFocusFloating } from './widgets/floating/WeeklyFocusFloating';
@@ -19,6 +19,7 @@ function App() {
   const checkRollover = useAppStore(state => state.checkRollover);
 
   const [widgetType, setWidgetType] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -26,23 +27,42 @@ function App() {
       const params = new URLSearchParams(window.location.search);
       const type = params.get('widget');
       
-      if (win.label.startsWith('widget-') || type) {
+      const isWidget = win.label.startsWith('widget-') || !!type;
+      if (isWidget) {
         setWidgetType(type || win.label.replace('widget-', ''));
       }
       
       await SyncManager.init();
+
+      // Hydrate all stores
+      hydrateApp();
+      hydratePlanner();
+      hydrateAnalytics();
+
+      setIsReady(true);
+
+      // Transition from splashscreen to main window if this is the main window
+      if (!isWidget && win.label === 'main') {
+        // Small delay to ensure the dashboard has started rendering
+        setTimeout(async () => {
+          try {
+            const splash = await Window.getByLabel('splashscreen');
+            if (splash) {
+              await win.show();
+              await splash.close();
+            }
+          } catch (e) {
+            console.error('Splashscreen transition failed:', e);
+            await win.show(); // Fallback: just show the main window
+          }
+        }, 800);
+      }
     };
     
     init();
-  }, []);
+  }, [hydrateApp, hydratePlanner, hydrateAnalytics]);
 
   useSessionTracker();
-
-  useEffect(() => {
-    hydrateApp();
-    hydratePlanner();
-    hydrateAnalytics();
-  }, [hydrateApp, hydratePlanner, hydrateAnalytics]);
 
   useEffect(() => {
     // ALWAYS run the interval for rollover detection, even in widgets
@@ -56,6 +76,9 @@ function App() {
 
     return () => clearInterval(interval);
   }, [tick, checkRollover, widgetType]);
+
+  // Don't render until stores are hydrated to avoid layout shifts or missing data
+  if (!isReady) return null;
 
   // Render Widget UI if we are in a widget window
   if (widgetType === 'countdown') return <CountdownFloating />;

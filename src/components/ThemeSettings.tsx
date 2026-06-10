@@ -4,7 +4,7 @@ import { themes } from '../themes/configs';
 import { 
   ImageIcon, Sparkles, Layers, 
   Upload, Save, CheckCircle2, AlertCircle, Trash2, Plus, 
-  Monitor, LayoutPanelLeft, Zap, Music, ChevronRight
+  Monitor, LayoutPanelLeft, Zap, Music, ChevronRight, Database
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { VisualEffectType } from '../themes/theme.types';
@@ -12,6 +12,7 @@ import { assetManager } from '../assets-system/manager/AssetManager';
 import { WidgetStyleEditor } from '../widgets/widget-styles/WidgetStyleEditor';
 import { AudioSettings } from './AudioSettings';
 import { WidgetSettings } from './WidgetSettings';
+import { DataSettings } from './DataSettings';
 import { Button } from './ui/Button';
 
 export function ThemeSettings() {
@@ -44,7 +45,7 @@ export function ThemeSettings() {
 
   
   const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('presets');
-  const [customTab, setCustomTab] = useState<'background' | 'effects' | 'overlays' | 'widgets' | 'audio' | 'widgets-desktop'>('background');
+  const [customTab, setCustomTab] = useState<'background' | 'effects' | 'overlays' | 'widgets' | 'audio' | 'widgets-desktop' | 'data'>('background');
   const [selectedWidget, setSelectedWidget] = useState<'countdown' | 'timeline' | 'planner' | 'stats' | 'ranking'>('countdown');
   const [showApplyFeedback, setShowApplyFeedback] = useState(false);
   const [presetName, setPresetName] = useState('');
@@ -204,6 +205,7 @@ export function ThemeSettings() {
                 { id: 'widgets', label: 'Widgets UI', icon: Monitor },
                 { id: 'widgets-desktop', label: 'Desktop Widgets', icon: LayoutPanelLeft },
                 { id: 'audio', label: 'Audio Engine', icon: Music },
+                { id: 'data', label: 'Data & Backup', icon: Database },
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -324,6 +326,11 @@ export function ThemeSettings() {
               {/* Desktop Widgets Section */}
               {customTab === 'widgets-desktop' && (
                 <WidgetSettings />
+              )}
+
+              {/* Data Portability Section */}
+              {customTab === 'data' && (
+                <DataSettings />
               )}
 
               {/* Effects Section */}

@@ -25,6 +25,51 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-main);
+  user-select: none;
+  -webkit-user-select: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, [role="button"], input[type="submit"] {
+  cursor: pointer;
+}
+
+input, textarea {
+  user-select: auto;
+  -webkit-user-select: auto;
+  cursor: text;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-fg);
 }
 
 #root {
