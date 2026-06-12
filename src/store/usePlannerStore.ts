@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { PlannedTask } from '../models/PlannedTask';
 import { LocalStorageService } from '../services/persistence/storage';
 import { useAppStore } from './useAppStore';
+import { emitCompanionEvent } from '../companion/events/CompanionEventManager';
+import { getTodayDateString } from '../utils/time';
 
 interface PlannerState {
   tasks: PlannedTask[];
@@ -65,11 +67,23 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   },
 
   toggleComplete: (id) => {
+    const previousTask = get().tasks.find((t) => t.id === id);
     const newTasks = get().tasks.map((t) =>
       t.id === id ? { ...t, completed: !t.completed } : t
     );
     set({ tasks: newTasks });
     LocalStorageService.savePlannedTasks(newTasks);
     useAppStore.getState().syncWithPlanner();
+
+    const updatedTask = newTasks.find((t) => t.id === id);
+    if (updatedTask?.completed && !previousTask?.completed) {
+      emitCompanionEvent('task_completed', { taskId: updatedTask.id, taskName: updatedTask.title });
+
+      const today = getTodayDateString();
+      const todayTasks = newTasks.filter((t) => t.date === today);
+      if (todayTasks.length > 0 && todayTasks.every((t) => t.completed)) {
+        emitCompanionEvent('schedule_finished');
+      }
+    }
   },
 }));

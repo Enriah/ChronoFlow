@@ -1,146 +1,238 @@
 # ChronoFlow
 
-ChronoFlow is a next-generation schedule and task management application designed for focus and immersion. Built with a powerful visual engine and a highly customizable UI, it transforms your daily routine into a personalized, atmospheric experience.
+ChronoFlow is a local-first desktop focus planner built with Tauri, React, TypeScript, Tailwind CSS, and Zustand. It combines a scheduler, countdown timer, timeline, future planner, floating widgets, themes, visual effects, audio notifications, and an AI Companion into one desktop workspace.
 
-![Main App Dashboard](./screenshots/MainApp.png)
+Version 0.2 expands the Companion from a chat panel into a present, voice-capable assistant with local memory, journaling, wake word support, and user-approved command actions.
 
-## ✨ Key Features
+![ChronoFlow Dashboard](./screenshots/MainApp.png)
 
-### 🌌 Immersive Atmosphere Builder
-Design your perfect workspace with dynamic background effects. Choose from **Rain, Sakura, Snow, Stars, Matrix, Electricity, and Fog**. Control every detail from intensity and speed to opacity, ensuring your environment matches your flow state.
+## Highlights
 
-### 🎨 Total UI Customization
-Tailor every widget to your aesthetic. Chronoflow supports **Glassmorphism, Gradients, and Custom Image backgrounds** for all UI elements. Tweak corner radii, blur depth, inner glows, and shadow intensities to create a truly unique desktop presence.
+- Scheduler and countdown for current focus sessions
+- Timeline view for the day
+- Future planner and recurring schedule support
+- Floating desktop widgets
+- Theme system with custom backgrounds and visual effects
+- Audio notifications for session transitions
+- Gemini-powered Companion chat
+- Local JSON persistence
+- Local-first Companion memory and journal systems
+- Optional voice input/output with Browser TTS and ElevenLabs
+- Smart Wake Vosk wake word support bundled into the MSI
+- Companion Actions for user-approved apps, folders, URLs, and built-in commands
 
-### 📅 Advanced Scheduling & Planning
-- **Smart Timeline:** Visualize your day with an interactive timeline that syncs in real-time.
-- **Integrated Planner:** Plan ahead with a full calendar view, categories, and progress tracking.
-- **Linked Actions:** Automatically open URLs, applications, or folders when a task starts to streamline your workflow.
+## New In Version 0.2
 
-### 🎵 Intelligent Audio Engine
-Never miss a transition with a granular notification system. Assign custom sounds to events like "Task Started" or "Session Ending," and manage global volumes for a non-intrusive focus experience.
+### Companion Presence
 
-### 📊 Productivity Insights
-Track your progress with weekly focus statistics and activity rankings. Understand where your time goes and optimize your habits over time.
+- Top-right Companion popup messages
+- Companion avatar, name, and personality tone
+- Local reaction templates without extra Gemini calls
+- Cooldowns to prevent popup spam
 
-## 🚀 Tech Stack
+### Companion Memory
 
-- **Frontend:** React 19 + TypeScript + Vite
-- **Desktop Framework:** Tauri v2 (Rust)
-- **Styling:** Tailwind CSS 4.0
-- **State Management:** Zustand
-- **Icons:** Lucide React
-- **Date Handling:** date-fns
+- Local memory files under the app config companion folder
+- Memory categories for goals, projects, habits, interests, preferences, milestones, and notes
+- Memory viewer, edit, delete, import, export, and reset flows
+- Relevant memory retrieval for future Gemini context without sending the whole database
 
-## 🛠️ Developer Setup Guide
+### Journal And Reflection
 
-### Prerequisites
-- **Node.js:** Latest LTS version.
-- **Rust:** Required for building Tauri applications. Install at [rustup.rs](https://rustup.rs/).
-- **pnpm:** Recommended package manager.
+- Daily journal entries with stats, important events, and reflections
+- Weekly and monthly summaries
+- Journal viewer with timeline grouping and search
+- Safe fallback when Gemini is unavailable
 
-### Steps
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd ScheduleApp
-   ```
+### Relationship And Recall
 
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
+- Relationship profile with days known, focus hours, memory count, journal count, and milestones
+- Local milestones for focus time, journals, memory count, streaks, and projects
+- Recall service for searching memories, journals, and milestones
 
-3. **Run in development mode:**
-   ```bash
-   pnpm tauri dev
-   ```
+### Voice And Wake Word
 
-4. **Build the application:**
-   ```bash
-   pnpm tauri build
-   ```
+- Push-to-talk voice input
+- Browser Web Speech recognition when available
+- Browser TTS fallback
+- Optional ElevenLabs TTS with voice selection and preview
+- Smart Wake Vosk mode for custom wake names such as Airi, Nova, Luna, and Chronos
+- MSI bundle includes the default Vosk model and `libvosk.dll`
 
-## 🧩 Modding Guide
+### Companion Actions
 
-"Modding" in this project refers to extending or modifying core features. Here is a basic overview:
+- User-approved action registry stored locally
+- Supported actions: app, folder, URL, and built-in command
+- Confirmation required by default
+- No arbitrary shell command execution
+- Voice and text commands use the same action detection path
+- Built-in action: skip current session
 
-### Important Directory Structure
-- `src/components/`: Contains UI components. You can add new widgets here.
-- `src/store/`: State management via Zustand. Create a `use...Store.ts` file here for new storage logic.
-- `src/models/`: Interfaces and data types for schedules and tasks.
-- `src/hooks/`: Custom hooks for logic like session tracking and notifications.
+## Tech Stack
 
-### Adding New Features
-1. **Define Models:** If the new feature requires new data structures, update or add files in `src/models/`.
-2. **Manage State:** Update the corresponding store in `src/store/` to handle data logic.
-3. **Create UI:** Build new components in `src/components/` and integrate them into `Dashboard.tsx` or relevant views.
+- Desktop: Tauri v2 and Rust
+- Frontend: React, TypeScript, Vite
+- Styling: Tailwind CSS
+- State: Zustand
+- Persistence: localStorage and local JSON files
+- AI: Gemini API integration
+- Voice: Browser STT/TTS, optional ElevenLabs, bundled Vosk wake detection
 
-## 🎨 Theme Customization Guide
+## Development Setup
 
-The project features a flexible theme system. You can easily add new themes following these steps:
+### Requirements
 
-### 1. Define a New Theme
-Open `src/themes/configs.ts` and create a new `ThemeConfig` object. Example:
+- Node.js LTS
+- pnpm
+- Rust via [rustup](https://rustup.rs/)
+- Windows Build Tools for Windows builds
 
-```typescript
-export const myCustomTheme: ThemeConfig = {
-  id: 'my-custom',
-  name: 'My Custom Theme',
-  type: 'custom',
-  colors: {
-    background: '#1a1a1a',
-    surface: '#2d2d2d',
-    surfaceHover: '#3d3d3d',
-    primary: '#ff5555',
-    primaryForeground: '#ffffff',
-    text: '#f8f8f2',
-    textSecondary: '#6272a4',
-    border: '#44475a',
-    accent: '#bd93f9',
-  },
-  typography: {
-    fontFamily: 'Inter, sans-serif',
-    titleFont: 'Inter, sans-serif',
-  },
-  ui: {
-    radius: '8px',
-    borderWeight: '1px',
-    shadow: '0 4px 12px rgba(0,0,0,0.5)',
-  },
-  effects: {
-    glow: true,
-    scanlines: false,
-    animations: true,
-    // Particle effect colors
-    rainColor: 'rgba(255, 85, 85, 0.3)',
-    snowColor: 'rgba(255, 255, 255, 0.5)',
-    sakuraColor: 'rgba(255, 183, 197, 0.5)',
-    starsColor: 'rgba(189, 147, 249, 0.6)',
-    matrixColor: 'rgba(80, 250, 123, 0.8)',
-    electricityColor: 'rgba(139, 233, 253, 0.8)',
-    fogColor: 'rgba(68, 71, 90, 0.2)',
-  },
-};
+### Install
+
+```bash
+pnpm install
 ```
 
-### 2. Register the Theme
-Add your newly created theme to the `themes` array at the end of `src/themes/configs.ts`:
+### Run The Desktop App
 
-```typescript
-export const themes = [
-  minimalTheme, 
-  neonTheme, 
-  terminalTheme, 
-  softTheme, 
-  fantasyTheme,
-  myCustomTheme // Add it here
-];
+```bash
+pnpm tauri dev
 ```
 
-### 3. Update Types (If necessary)
-If you use a new `type`, update the `ThemeType` union in `src/themes/theme.types.ts`.
+### Build Frontend
 
-## 📄 License
+```bash
+pnpm build
+```
 
-This project is distributed under the **MIT** License. See the `LICENSE` file for more details.
+### Build Desktop Installers
+
+```bash
+pnpm tauri build
+```
+
+The MSI output is generated under:
+
+```text
+src-tauri/target/release/bundle/msi/
+```
+
+## Bundled Wake Word Assets
+
+ChronoFlow bundles the default Vosk files for Smart Wake mode:
+
+```text
+src-tauri/resources/vosk/
+  libvosk.dll
+  vosk-model-small-en-us-0.15/
+```
+
+The Tauri config includes:
+
+```json
+"resources": ["resources/vosk/**/*"]
+```
+
+When installed from MSI, users do not need to download a Vosk model or DLL separately. Advanced users can still override the model path in:
+
+```text
+Settings > Companion > Voice > Wake Word > Custom Vosk Model Folder Path
+```
+
+Leave that field empty to use the bundled model.
+
+## Companion Actions
+
+Open:
+
+```text
+Settings > Companion > Actions
+```
+
+Users can register:
+
+- App actions with `.exe` or `.lnk` paths
+- Folder actions
+- URL actions
+- Built-in commands
+
+Each action supports aliases, enable/disable, confirmation, test, and delete.
+
+Example aliases:
+
+```text
+vscode, code, visual studio code, open code
+```
+
+Voice command example:
+
+```text
+Airi, open VS Code
+```
+
+ChronoFlow asks for confirmation before execution unless the action has confirmation disabled.
+
+## Modding The UI
+
+ChronoFlow's UI is component-driven. Most visual changes should start in these areas:
+
+```text
+src/components/
+src/components/ui/
+src/components/companion/
+src/index.css
+src/store/useThemeStore.ts
+```
+
+### Common UI Mod Points
+
+- Global app surface, contrast, and shared utility styles: `src/index.css`
+- Theme persistence and theme values: `src/store/useThemeStore.ts`
+- Generic controls such as switches and buttons: `src/components/ui/`
+- Dashboard layout: `src/components/Dashboard.tsx`
+- Companion settings and panels: `src/components/companion/`
+
+### Add Or Tune A Theme
+
+1. Locate the theme configuration in the theme store or theme config files used by the current build.
+2. Add or edit color tokens for background, surface, primary, text, borders, and accents.
+3. Keep text contrast high against custom backgrounds.
+4. Test the Settings page, Companion panel, dashboard, and floating widgets.
+
+### UI Quality Rules
+
+- Keep settings panels readable on both dark and custom backgrounds.
+- Use existing UI controls before adding new control styles.
+- Keep toggles consistent with the rest of Settings.
+- Avoid nested cards unless the content is genuinely grouped.
+- Verify that labels and buttons do not overflow on small windows.
+
+## Project Structure
+
+```text
+src/
+  companion/          Companion services: memory, journal, voice, actions, recall
+  components/         React UI
+  hooks/              App and Companion hooks
+  models/             TypeScript types
+  services/           Scheduler, persistence, audio, Gemini, widgets
+  store/              Zustand stores
+
+src-tauri/
+  src/                Rust commands and native integrations
+  resources/          Bundled runtime assets
+  capabilities/       Tauri permission config
+```
+
+## Safety Model
+
+- Companion popup reactions use local templates.
+- Gemini is used for manual chat and controlled reflection/extraction flows.
+- Wake detection does not call Gemini, memory, journal, or TTS before activation.
+- Companion Actions cannot run arbitrary shell commands.
+- User API keys stay local.
+- Memory, journal, and action registries are local-first.
+
+## License
+
+MIT. See [LICENSE](./LICENSE).

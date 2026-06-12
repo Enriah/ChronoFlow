@@ -3,7 +3,9 @@ import { Dashboard } from './components/Dashboard';
 import { useAppStore } from './store/useAppStore';
 import { usePlannerStore } from './store/usePlannerStore';
 import { useAnalyticsStore } from './store/useAnalyticsStore';
+import { useCompanionStore } from './store/useCompanionStore';
 import { useSessionTracker } from './hooks/useSessionTracker';
+import { useCompanionManager } from './hooks/useCompanionManager';
 import { SyncManager } from './services/widgets/SyncManager';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownFloating } from './widgets/floating/CountdownFloating';
@@ -14,6 +16,7 @@ function App() {
   const hydrateApp = useAppStore(state => state.hydrate);
   const hydratePlanner = usePlannerStore(state => state.hydrate);
   const hydrateAnalytics = useAnalyticsStore(state => state.hydrate);
+  const hydrateCompanion = useCompanionStore(state => state.hydrate);
   
   const tick = useAppStore(state => state.tick);
   const checkRollover = useAppStore(state => state.checkRollover);
@@ -38,6 +41,7 @@ function App() {
       hydrateApp();
       hydratePlanner();
       hydrateAnalytics();
+      await hydrateCompanion();
 
       setIsReady(true);
 
@@ -60,9 +64,10 @@ function App() {
     };
     
     init();
-  }, [hydrateApp, hydratePlanner, hydrateAnalytics]);
+  }, [hydrateApp, hydratePlanner, hydrateAnalytics, hydrateCompanion]);
 
   useSessionTracker();
+  useCompanionManager();
 
   useEffect(() => {
     // ALWAYS run the interval for rollover detection, even in widgets

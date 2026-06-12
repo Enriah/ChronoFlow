@@ -11,6 +11,8 @@ build
 bin
 obj
 out
+coverage
+*.tsbuildinfo
 
 # Tauri specific
 src-tauri/target
@@ -22,6 +24,12 @@ src-tauri/bin
 *.dmg
 *.deb
 *.rpm
+*.msi
+*.AppImage
+
+# Local speech/model staging
+# Bundled release assets live in src-tauri/resources and are intentionally tracked.
+models/
 
 # Environment files
 .env
@@ -54,9 +62,6 @@ yarn-error.log*
 *.diff
 Thumbs.db
 desktop.ini
-
-# TypeScript
-*.tsbuildinfo
 
 # Debugging
 .tauri-dev

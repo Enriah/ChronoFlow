@@ -25,6 +25,7 @@
     "shell:allow-execute",
     "shell:allow-open",
     "notification:default",
+    "global-shortcut:default",
     "fs:allow-appdata-read",
     "fs:allow-appdata-write",
     "fs:allow-appdata-read-recursive",

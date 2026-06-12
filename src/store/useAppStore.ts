@@ -6,6 +6,7 @@ import { alignToToday, getTodayDateString } from '../utils/time';
 import { LauncherService } from '../services/actions/LauncherService';
 import { AudioService } from '../services/audio/AudioService';
 import { NotificationService } from '../services/notifications/NotificationService';
+import { emitCompanionEvent } from '../companion/events/CompanionEventManager';
 
 interface AppState {
   // State
@@ -191,6 +192,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Notification
         NotificationService.notify('Session Started', `Now focusing on: ${currentTask.title}`);
+        emitCompanionEvent('task_started', { taskId: currentTask.id, taskName: currentTask.title });
       }
 
       // Handle Warning Hooks
@@ -215,9 +217,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     } else {
       // If we were in a task and it just ended
       if (lastTriggeredTaskId) {
+        const completedTask = schedules.find(s => s.id === lastTriggeredTaskId);
+        const completedSchedules = schedules.map(s => (
+          s.id === lastTriggeredTaskId ? { ...s, completed: true } : s
+        ));
+        const allTodayComplete = completedSchedules.length > 0 && completedSchedules.every(s => s.completed || s.endTime <= now);
+
         set({ lastTriggeredTaskId: null });
+        LocalStorageService.saveSchedules(completedSchedules);
+        set({ schedules: completedSchedules });
         AudioService.trigger('taskCompleted');
         NotificationService.notify('Session Completed', 'Your focus session has finished.');
+
+        if (completedTask) {
+          emitCompanionEvent('task_completed', { taskId: completedTask.id, taskName: completedTask.title });
+          emitCompanionEvent('focus_session_completed', { taskId: completedTask.id, taskName: completedTask.title });
+        }
+
+        if (allTodayComplete) {
+          emitCompanionEvent('schedule_finished');
+        }
       }
     }
 
@@ -235,6 +254,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const currentToday = getTodayDateString();
 
     if (currentToday !== today) {
+      window.dispatchEvent(new CustomEvent('day-rollover', { detail: { previousDay: today, newDay: currentToday } }));
       set({ today: currentToday, schedules: [] });
       get().hydrate(); // Re-hydrate will filter, sync, and save the new day state
       return true;
@@ -268,11 +288,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   skipTask: () => {
-    const { currentTask } = get();
-    if (!currentTask) return;
-
-    // To "skip", we effectively end the current task now
+    const state = get();
     const now = Date.now();
-    get().updateSchedule(currentTask.id, { endTime: now });
+    const activeTask = state.currentTask || getCurrentTask(now, state.schedules).currentTask;
+    if (!activeTask) {
+      console.info('[AppStore] skipTask ignored: no active task', {
+        scheduleCount: state.schedules.length,
+        isRunning: state.isRunning,
+      });
+      return;
+    }
+
+    const skippedSchedules = state.schedules
+      .map((schedule) => (
+        schedule.id === activeTask.id
+          ? { ...schedule, endTime: now, completed: true }
+          : schedule
+      ))
+      .sort((a, b) => a.startTime - b.startTime);
+    const { nextTask } = getCurrentTask(now, skippedSchedules);
+
+    console.info('[AppStore] skipTask completed active task', {
+      taskId: activeTask.id,
+      taskTitle: activeTask.title,
+      previousEndTime: activeTask.endTime,
+      newEndTime: now,
+    });
+
+    LocalStorageService.saveSchedules(skippedSchedules);
+    set({
+      schedules: skippedSchedules,
+      currentTask: null,
+      nextTask,
+      remainingMs: 0,
+      progress: 100,
+      now,
+      lastTriggeredTaskId: null,
+    });
   },
 }));

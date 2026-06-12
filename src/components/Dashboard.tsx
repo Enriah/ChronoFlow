@@ -8,7 +8,7 @@ import { ScheduleModal } from './ScheduleModal';
 import { ThemeSettings } from './ThemeSettings';
 import { useThemeStore } from '../store/useThemeStore';
 import type { Schedule } from '../models/Schedule';
-import { Settings, Plus } from 'lucide-react';
+import { Settings, Plus, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BackgroundLayer } from '../visual-engine/backgrounds/BackgroundLayer';
 import { VisualEffectsLayer } from '../visual-engine/renderer/VisualEffectsLayer';
@@ -16,10 +16,14 @@ import { OverlayLayer } from '../visual-engine/overlays/OverlayLayer';
 import { Button } from './ui/Button';
 
 import { TransitionNotification } from './notifications/TransitionNotification';
+import { CompanionChat } from './companion/CompanionChat';
+import { CompanionPopupHost } from './companion/CompanionPopupHost';
+import { WakeWordStatusIndicator } from './companion/WakeWordStatusIndicator';
 
 export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCompanionOpen, setIsCompanionOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | undefined>();
   const theme = useThemeStore(state => state.getTheme());
   const isTerminal = theme.type === 'terminal';
@@ -40,10 +44,13 @@ export function Dashboard() {
       <VisualEffectsLayer />
       <OverlayLayer />
       <TransitionNotification />
+      <CompanionPopupHost />
+      <WakeWordStatusIndicator />
       
       <div className={clsx(
         "relative z-20 max-w-screen-2xl mx-auto p-6 md:p-12 w-full transition-all duration-500 min-h-screen flex flex-col gap-12",
-        isTerminal && "font-mono"
+        isTerminal && "font-mono",
+        isCompanionOpen && "mr-[400px] max-w-[calc(100vw-450px)]"
       )}>
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
@@ -55,6 +62,15 @@ export function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
+            <Button 
+              variant="secondary"
+              size="icon"
+              onClick={() => setIsCompanionOpen(!isCompanionOpen)}
+              className={clsx(isCompanionOpen && "bg-primary text-white border-primary")}
+              title="Companion Chat"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </Button>
             <Button 
               variant="secondary"
               size="icon"
@@ -112,6 +128,14 @@ export function Dashboard() {
           initialData={editingSchedule}
         />
       </div>
+
+      {/* Companion Sidebar */}
+      <aside className={clsx(
+        "fixed top-0 right-0 h-full w-[400px] z-[60] transition-transform duration-500 ease-in-out",
+        isCompanionOpen ? "translate-x-0" : "translate-x-full"
+      )}>
+        <CompanionChat onClose={() => setIsCompanionOpen(false)} />
+      </aside>
     </>
   );
 }

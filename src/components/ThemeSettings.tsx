@@ -4,7 +4,8 @@ import { themes } from '../themes/configs';
 import { 
   ImageIcon, Sparkles, Layers, 
   Upload, Save, CheckCircle2, AlertCircle, Trash2, Plus, 
-  Monitor, LayoutPanelLeft, Zap, Music, ChevronRight, Database
+  Monitor, LayoutPanelLeft, Zap, Music, ChevronRight, Database,
+  MessageSquare
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { VisualEffectType } from '../themes/theme.types';
@@ -13,6 +14,7 @@ import { WidgetStyleEditor } from '../widgets/widget-styles/WidgetStyleEditor';
 import { AudioSettings } from './AudioSettings';
 import { WidgetSettings } from './WidgetSettings';
 import { DataSettings } from './DataSettings';
+import { CompanionSettings } from './companion/CompanionSettings';
 import { Button } from './ui/Button';
 
 export function ThemeSettings() {
@@ -45,7 +47,7 @@ export function ThemeSettings() {
 
   
   const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('presets');
-  const [customTab, setCustomTab] = useState<'background' | 'effects' | 'overlays' | 'widgets' | 'audio' | 'widgets-desktop' | 'data'>('background');
+  const [customTab, setCustomTab] = useState<'background' | 'effects' | 'overlays' | 'widgets' | 'audio' | 'widgets-desktop' | 'data' | 'companion'>('background');
   const [selectedWidget, setSelectedWidget] = useState<'countdown' | 'timeline' | 'planner' | 'stats' | 'ranking'>('countdown');
   const [showApplyFeedback, setShowApplyFeedback] = useState(false);
   const [presetName, setPresetName] = useState('');
@@ -82,12 +84,12 @@ export function ThemeSettings() {
   };
 
   return (
-    <div className="bg-surface/80 backdrop-blur-2xl border border-border rounded-[3rem] p-8 md:p-14 shadow-2xl w-[96vw] max-w-[1440px] mx-auto transition-all duration-500 overflow-hidden">
+    <div className="settings-shell backdrop-blur-2xl rounded-2xl p-6 md:p-10 shadow-2xl w-[96vw] max-w-[1440px] mx-auto transition-all duration-500 overflow-hidden">
       {/* Header with Navigation */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-12">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-10">
         <div className="space-y-1 min-w-0">
-          <h2 className="text-3xl font-black tracking-tighter text-text truncate">Atmosphere Builder</h2>
-          <p className="text-text-secondary text-sm font-medium opacity-70 truncate">Design your personalized focus environment.</p>
+          <h2 className="text-3xl font-black tracking-tight text-text">Atmosphere Builder</h2>
+          <p className="settings-muted text-sm font-semibold">Design your personalized focus environment.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
@@ -197,7 +199,7 @@ export function ThemeSettings() {
         {activeTab === 'custom' && (
           <div className="flex flex-col lg:flex-row gap-12 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* Editor Sidebar */}
-            <div className="w-full lg:w-72 flex flex-col gap-2 shrink-0">
+            <div className="settings-sidebar w-full lg:w-72 flex flex-col gap-2 shrink-0 rounded-2xl p-2">
               {[
                 { id: 'background', label: 'Global BG', icon: ImageIcon },
                 { id: 'effects', label: 'Atmosphere', icon: Sparkles },
@@ -205,6 +207,7 @@ export function ThemeSettings() {
                 { id: 'widgets', label: 'Widgets UI', icon: Monitor },
                 { id: 'widgets-desktop', label: 'Desktop Widgets', icon: LayoutPanelLeft },
                 { id: 'audio', label: 'Audio Engine', icon: Music },
+                { id: 'companion', label: 'AI Companion', icon: MessageSquare },
                 { id: 'data', label: 'Data & Backup', icon: Database },
               ].map(tab => (
                 <button
@@ -213,7 +216,7 @@ export function ThemeSettings() {
                   className={clsx(
                     "flex items-center justify-between px-6 py-5 rounded-[1.5rem] transition-all font-black text-[10px] uppercase tracking-widest text-left group",
                     customTab === tab.id 
-                      ? "bg-primary/10 text-primary border border-primary/20 shadow-sm" 
+                      ? "bg-primary text-primary-fg border border-primary shadow-sm" 
                       : "text-text-secondary hover:text-text hover:bg-surface-hover hover:border-border border border-transparent"
                   )}
                 >
@@ -227,7 +230,7 @@ export function ThemeSettings() {
             </div>
 
             {/* Editor Content */}
-            <div className="flex-1 bg-black/10 rounded-[2.5rem] p-8 md:p-10 border border-white/5 overflow-y-auto overflow-x-hidden max-h-[75vh] custom-scrollbar">
+            <div className="settings-content-panel flex-1 rounded-2xl p-6 md:p-8 overflow-y-auto overflow-x-hidden max-h-[75vh] custom-scrollbar">
               {/* Background Section */}
               {customTab === 'background' && (
                 <div className="space-y-12 animate-in fade-in duration-300">
@@ -331,6 +334,11 @@ export function ThemeSettings() {
               {/* Data Portability Section */}
               {customTab === 'data' && (
                 <DataSettings />
+              )}
+
+              {/* Companion Section */}
+              {customTab === 'companion' && (
+                <CompanionSettings />
               )}
 
               {/* Effects Section */}
