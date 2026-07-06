@@ -4,6 +4,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useWidgetStore } from '../../store/useWidgetStore';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useWorkSessionStore } from '../../core/sessions/useWorkSessionStore';
 
 class SyncManagerClass {
   private isWidget = false;
@@ -44,6 +45,10 @@ class SyncManagerClass {
       emit('sync-planner-state', state);
     });
 
+    useWorkSessionStore.subscribe((state) => {
+      emit('sync-session-state', { sessions: state.sessions, activeSession: state.activeSession });
+    });
+
     // Listen for actions from widgets
     listen('widget-action', (event: any) => {
       const { type, payload } = event.payload;
@@ -71,6 +76,9 @@ class SyncManagerClass {
     listen('sync-planner-state', (event: any) => {
       usePlannerStore.setState(event.payload);
     });
+    listen('sync-session-state', (event: any) => {
+      useWorkSessionStore.setState(event.payload);
+    });
   }
 
   private async handleWidgetAction(type: string, _payload: any) {
@@ -80,6 +88,15 @@ class SyncManagerClass {
         break;
       case 'skipTask':
         useAppStore.getState().skipTask();
+        break;
+      case 'pauseSession':
+        useWorkSessionStore.getState().pause();
+        break;
+      case 'resumeSession':
+        useWorkSessionStore.getState().resume();
+        break;
+      case 'completeSession':
+        useWorkSessionStore.getState().complete();
         break;
       case 'closeWidget':
         const { WidgetManager } = await import('./WidgetManager');

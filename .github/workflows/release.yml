@@ -1,0 +1,57 @@
+name: Release desktop app
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    name: Build Windows installers
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify frontend
+        run: |
+          pnpm lint
+          pnpm build
+
+      - name: Build and publish GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: ChronoFlow v__VERSION__
+          releaseBody: |
+            ChronoFlow v__VERSION__ for Windows x64.
+
+            Download the `.exe` installer for the simplest setup, or use the `.msi` package for Windows Installer deployment.
+
+            See the repository README and CHANGELOG for usage instructions, improvements, and optimization details.
+          releaseDraft: false
+          prerelease: false

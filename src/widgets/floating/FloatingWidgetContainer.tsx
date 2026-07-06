@@ -5,8 +5,8 @@ import { useWidgetStore } from '../../store/useWidgetStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { X, GripVertical } from 'lucide-react';
 import { SyncManager } from '../../services/widgets/SyncManager';
-import { PersistentAssetService } from '../../services/PersistentAssetService';
 import type { WidgetType } from '../../store/useWidgetStore';
+import { getWidgetChromeClassName, getWidgetChromeStyle, normalizeWidgetStyle } from '../widget-styles/widgetStyleEngine';
 
 interface FloatingWidgetContainerProps {
   children: React.ReactNode;
@@ -17,20 +17,9 @@ interface FloatingWidgetContainerProps {
 
 export function FloatingWidgetContainer({ children, type, className, title }: FloatingWidgetContainerProps) {
   const settings = useWidgetStore(state => state.settings);
-  const { activeEnvironment, getTheme } = useThemeStore();
-  const theme = getTheme();
+  const { activeEnvironment, performanceMode } = useThemeStore();
   
-  // Map widget type to theme style
-  const getWidgetStyle = () => {
-    switch (type) {
-      case 'countdown': return activeEnvironment.countdownStyle;
-      case 'timeline': return activeEnvironment.timelineStyle;
-      case 'weekly-focus': return activeEnvironment.statsStyle;
-      default: return activeEnvironment.countdownStyle;
-    }
-  };
-
-  const style = getWidgetStyle();
+  const style = normalizeWidgetStyle(activeEnvironment.countdownStyle);
   
   const handleMouseDown = async () => {
     const win = getCurrentWindow();
@@ -41,82 +30,18 @@ export function FloatingWidgetContainer({ children, type, className, title }: Fl
     SyncManager.dispatchAction('closeWidget', type);
   };
 
-  // Calculate combined opacity and blur
-  const finalOpacity = settings.opacity * style.opacity;
-  const finalBlur = settings.blurAmount + style.blur;
-
-  const getBorderStyle = () => {
-    switch (style.borderStyle) {
-      case 'neon':
-        return {
-          border: `2px solid var(--primary)`,
-          boxShadow: `0 0 ${15 * style.glowIntensity}px var(--primary), inset 0 0 ${5 * style.glowIntensity}px var(--primary)`,
-        };
-      case 'terminal':
-        return {
-          border: `1px solid var(--primary)`,
-          borderRadius: '0px',
-        };
-      case 'soft':
-        return {
-          border: `2px solid rgba(var(--primary-rgb), 0.2)`,
-          borderRadius: `${style.borderRadius}px`,
-        };
-      default:
-        return {
-          border: `1px solid var(--border)`,
-          borderRadius: `${style.borderRadius}px`,
-        };
-    }
-  };
-
-  const borderStyles = getBorderStyle();
-
-  const getBackgroundStyle = () => {
-    switch (style.backgroundType) {
-      case 'glass':
-        return {
-          backgroundColor: `rgba(var(--surface-rgb), ${finalOpacity})`,
-          backdropFilter: `blur(${finalBlur}px)`,
-          WebkitBackdropFilter: `blur(${finalBlur}px)`,
-        };
-      case 'solid':
-        return {
-          backgroundColor: `rgba(var(--surface-rgb), ${finalOpacity})`,
-        };
-      case 'gradient':
-        return {
-          background: `linear-gradient(135deg, rgba(var(--surface-rgb), ${finalOpacity}), rgba(var(--bg-rgb), ${finalOpacity}))`,
-        };
-      case 'image':
-        const resolvedUrl = PersistentAssetService.getAssetUrl(style.backgroundImage || '');
-        return {
-          backgroundImage: resolvedUrl ? `url("${resolvedUrl}")` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundColor: `rgba(0, 0, 0, ${1 - finalOpacity})`,
-        };
-      default:
-        return {
-          backgroundColor: `rgba(var(--surface-rgb), ${finalOpacity})`,
-          backdropFilter: `blur(${finalBlur}px)`,
-        };
-    }
-  };
-
-  const backgroundStyles = getBackgroundStyle();
-
   return (
     <div 
       className={clsx(
         "relative w-screen h-screen overflow-hidden flex flex-col group transition-all duration-300",
+        getWidgetChromeClassName(style),
         className
       )}
-      style={{
-        ...backgroundStyles,
-        ...borderStyles,
-        boxShadow: style.shadowIntensity > 0 ? theme.ui.shadow : borderStyles.boxShadow,
-      }}
+      style={getWidgetChromeStyle(style, {
+        opacityMultiplier: settings.opacity,
+        blurOffset: settings.blurAmount,
+        performanceMode,
+      })}
     >
       {/* Title Bar / Drag Area */}
       <div 

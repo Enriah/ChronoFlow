@@ -72,8 +72,8 @@ class WidgetManagerClass {
       win = new WebviewWindow(label, {
         url,
         title: `${type.charAt(0).toUpperCase() + type.slice(1)} Widget`,
-        width: type === 'countdown' ? 300 : 400,
-        height: type === 'countdown' ? 180 : 500,
+        width: 360,
+        height: 220,
         resizable: true,
         decorations: false,
         transparent: true,

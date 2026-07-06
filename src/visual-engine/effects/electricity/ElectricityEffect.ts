@@ -1,112 +1,45 @@
-import type { ThemeEffects } from '../../../themes/theme.types';
+import type { ThemeEffects, VisualEffectConfig } from '../../../themes/theme.types';
 import type { EffectModule } from '../../core/VisualEngine';
 
-class Bolt {
-  segments: { x: number, y: number }[] = [];
-  opacity: number = 0;
-  life: number = 0;
-  maxLife: number = 0;
-
-  constructor(width: number, height: number) {
-    this.reset(width, height);
-  }
-
-  reset(width: number, height: number) {
-    const startX = Math.random() * width;
-    const startY = 0;
-    const endX = startX + (Math.random() - 0.5) * 200;
-    const endY = height;
-
-    this.segments = [{ x: startX, y: startY }];
-    let currX = startX;
-    let currY = startY;
-
-    const segmentCount = 10;
-    for (let i = 1; i <= segmentCount; i++) {
-      currX += (endX - startX) / segmentCount + (Math.random() - 0.5) * 100;
-      currY += (endY - startY) / segmentCount;
-      this.segments.push({ x: currX, y: currY });
-    }
-
-    this.life = 0;
-    this.maxLife = 0.1 + Math.random() * 0.2;
-    this.opacity = 0.5 + Math.random() * 0.5;
-  }
-
-  update(deltaTime: number) {
-    this.life += deltaTime;
-  }
-
-  isDead() {
-    return this.life >= this.maxLife;
-  }
-
-  render(ctx: CanvasRenderingContext2D, color: string, performanceMode: boolean) {
-    if (this.segments.length < 2) return;
-
-    const baseColor = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-    const alpha = this.opacity * (1 - this.life / this.maxLife);
-    
-    if (baseColor) {
-      const r = baseColor[1];
-      const g = baseColor[2];
-      const b = baseColor[3];
-      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
-    } else {
-      ctx.strokeStyle = color;
-      ctx.shadowColor = color;
-    }
-
-    ctx.lineWidth = performanceMode ? 1.5 : 2.5;
-    
-    // shadowBlur is removed because it's a massive GPU killer in full-screen
-    
-    ctx.beginPath();
-    ctx.moveTo(this.segments[0].x, this.segments[0].y);
-    for (let i = 1; i < this.segments.length; i++) {
-      ctx.lineTo(this.segments[i].x, this.segments[i].y);
-    }
-    ctx.stroke();
-  }
-}
+type Bolt = { points: { x: number; y: number }[]; age: number; life: number };
 
 export class ElectricityEffect implements EffectModule {
-  id = 'electricity';
+  readonly id = 'electricity';
+  private width = 1;
+  private height = 1;
+  private timer = 0;
   private bolts: Bolt[] = [];
-  private width: number = 0;
-  private height: number = 0;
-  private spawnTimer: number = 0;
 
-  initialize(ctx: CanvasRenderingContext2D): void {
-    this.width = ctx.canvas.width;
-    this.height = ctx.canvas.height;
-  }
-
-  update(deltaTime: number, intensity: number, speed: number, _performanceMode: boolean): void {
-    this.spawnTimer += deltaTime * speed * 5;
-
-    if (this.spawnTimer > 1 / (intensity + 0.1)) {
-      this.bolts.push(new Bolt(this.width, this.height));
-      this.spawnTimer = 0;
+  initialize(ctx: CanvasRenderingContext2D) { this.resize(ctx.canvas.width, ctx.canvas.height); }
+  resize(width: number, height: number) { this.width = width; this.height = height; }
+  update(delta: number, config: VisualEffectConfig, reduced: boolean) {
+    this.timer += delta * (.7 + config.speed * 4);
+    if (this.timer > 1.2 / (.2 + config.intensity) && this.bolts.length < (reduced ? 1 : 3)) {
+      this.bolts.push(this.createBolt()); this.timer = 0;
     }
-
-    this.bolts = this.bolts.filter(bolt => {
-      bolt.update(deltaTime);
-      return !bolt.isDead();
-    });
+    this.bolts.forEach((bolt) => bolt.age += delta);
+    this.bolts = this.bolts.filter((bolt) => bolt.age < bolt.life);
   }
-
-  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, performanceMode: boolean): void {
-    this.bolts.forEach(bolt => bolt.render(ctx, theme.electricityColor, performanceMode));
+  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, config: VisualEffectConfig, reduced: boolean) {
+    ctx.strokeStyle = config.color || theme.electricityColor;
+    ctx.lineWidth = reduced ? 1.2 : 2;
+    const baseAlpha = ctx.globalAlpha;
+    for (const bolt of this.bolts) {
+      ctx.globalAlpha = baseAlpha * (1 - bolt.age / bolt.life);
+      ctx.beginPath(); ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
+      bolt.points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.stroke();
+    }
   }
+  destroy() { this.bolts = []; }
 
-  resize(width: number, height: number): void {
-    this.width = width;
-    this.height = height;
-  }
-
-  destroy(): void {
-    this.bolts = [];
+  private createBolt(): Bolt {
+    const start = Math.random() * this.width;
+    const points = Array.from({ length: 13 }, (_, index) => ({
+      x: start + (Math.random() - .5) * this.width * .22,
+      y: index / 12 * this.height,
+    }));
+    return { points, age: 0, life: .15 + Math.random() * .2 };
   }
 }
+

@@ -3,10 +3,8 @@ import type { Schedule } from '../models/Schedule';
 import { LocalStorageService } from '../services/persistence/storage';
 import { getCurrentTask } from '../services/scheduler/engine';
 import { alignToToday, getTodayDateString } from '../utils/time';
-import { LauncherService } from '../services/actions/LauncherService';
 import { AudioService } from '../services/audio/AudioService';
 import { NotificationService } from '../services/notifications/NotificationService';
-import { emitCompanionEvent } from '../companion/events/CompanionEventManager';
 
 interface AppState {
   // State
@@ -180,19 +178,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (currentTask.id !== lastTriggeredTaskId) {
         set({ lastTriggeredTaskId: currentTask.id });
         
-        // Execute Linked Actions
-        if (currentTask.linkedActions && Array.isArray(currentTask.linkedActions)) {
-          currentTask.linkedActions.forEach(action => {
-            if (action) LauncherService.execute(action);
-          });
-        }
-
         // Play Start Sound
         AudioService.trigger('taskStarted');
 
         // Notification
         NotificationService.notify('Session Started', `Now focusing on: ${currentTask.title}`);
-        emitCompanionEvent('task_started', { taskId: currentTask.id, taskName: currentTask.title });
       }
 
       // Handle Warning Hooks
@@ -229,14 +219,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         AudioService.trigger('taskCompleted');
         NotificationService.notify('Session Completed', 'Your focus session has finished.');
 
-        if (completedTask) {
-          emitCompanionEvent('task_completed', { taskId: completedTask.id, taskName: completedTask.title });
-          emitCompanionEvent('focus_session_completed', { taskId: completedTask.id, taskName: completedTask.title });
-        }
-
-        if (allTodayComplete) {
-          emitCompanionEvent('schedule_finished');
-        }
+        void completedTask;
+        void allTodayComplete;
       }
     }
 

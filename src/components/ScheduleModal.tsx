@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { useThemeStore } from '../store/useThemeStore';
 import type { Schedule } from '../models/Schedule';
-import type { LinkedAction } from '../models/LinkedAction';
-import { LinkedActionEditor } from './task-actions/LinkedActionEditor';
 import { X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getTodayDateString } from '../utils/time';
 import { Button } from './ui/Button';
+import { ToggleSwitch } from './ui/ToggleSwitch';
+import type { DevTaskType } from '../models/DevTask';
 
 interface ScheduleModalProps {
   isOpen: boolean;
@@ -20,7 +20,11 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [color, setColor] = useState('bg-blue-500');
-  const [linkedActions, setLinkedActions] = useState<LinkedAction[]>([]);
+  const [taskType, setTaskType] = useState<DevTaskType>('coding');
+  const [project, setProject] = useState('');
+  const [tags, setTags] = useState('');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [deepWork, setDeepWork] = useState(false);
 
   const addSchedule = useAppStore(state => state.addSchedule);
   const updateSchedule = useAppStore(state => state.updateSchedule);
@@ -35,13 +39,17 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
       setStartTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
       setEndTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
       setColor(initialData.color);
-      setLinkedActions(initialData.linkedActions || []);
+      setTaskType(initialData.type || 'coding');
+      setProject(initialData.project || '');
+      setTags((initialData.tags || []).join(', '));
+      setPriority(initialData.priority || 'medium');
+      setDeepWork(initialData.deepWork || false);
     } else {
       setTitle('');
       setStartTime('09:00');
       setEndTime('10:00');
       setColor('bg-blue-500');
-      setLinkedActions([]);
+      setTaskType('coding'); setProject(''); setTags(''); setPriority('medium'); setDeepWork(false);
     }
   }, [initialData, isOpen]);
 
@@ -57,6 +65,8 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
 
     const startEpoch = new Date(today.getFullYear(), today.getMonth(), today.getDate(), startH, startM).getTime();
     const endEpoch = new Date(today.getFullYear(), today.getMonth(), today.getDate(), endH, endM).getTime();
+    if (endEpoch <= startEpoch) return;
+    const devFields = { type: taskType, project: project || undefined, tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean), priority, deepWork, plannedDurationMinutes: Math.max(1, Math.round((endEpoch - startEpoch) / 60000)), status: 'planned' as const };
 
     if (initialData) {
       updateSchedule(initialData.id, {
@@ -64,8 +74,8 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
         startTime: startEpoch,
         endTime: endEpoch,
         color,
-        linkedActions,
         date: todayStr
+        , ...devFields
       });
     } else {
       addSchedule({
@@ -77,9 +87,9 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
         color,
         recurring: true,
         repeatDays: [today.getDay()],
-        linkedActions,
         completed: false,
         notificationsEnabled: true
+        , ...devFields
       });
     }
 
@@ -152,6 +162,13 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary">Work type</label><select value={taskType} onChange={(e) => setTaskType(e.target.value as DevTaskType)} className="w-full rounded-2xl px-4 py-3">{['coding','devops','learning','debugging','meeting','deployment','incident','review','documentation'].map((type) => <option key={type}>{type}</option>)}</select></div>
+            <div className="space-y-2"><label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary">Priority</label><select value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)} className="w-full rounded-2xl px-4 py-3">{['low','medium','high'].map((value) => <option key={value}>{value}</option>)}</select></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4"><input value={project} onChange={(e) => setProject(e.target.value)} placeholder="Project" className="rounded-2xl px-4 py-3"/><input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags, comma separated" className="rounded-2xl px-4 py-3"/></div>
+          <ToggleSwitch checked={deepWork} onCheckedChange={setDeepWork} label="Deep work session" description="Mark this block as focused work." className="rounded-xl border border-border bg-surface-hover/20 px-4 py-3" />
+
           {!isTerminal && (
             <div className="space-y-3">
               <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Color Theme</label>
@@ -173,13 +190,6 @@ export function ScheduleModal({ isOpen, onClose, initialData }: ScheduleModalPro
               </div>
             </div>
           )}
-
-          <div className="pt-4 border-t border-border/50">
-            <LinkedActionEditor 
-              actions={linkedActions}
-              onChange={setLinkedActions}
-            />
-          </div>
 
           <div className="pt-6 flex gap-4">
             <Button 

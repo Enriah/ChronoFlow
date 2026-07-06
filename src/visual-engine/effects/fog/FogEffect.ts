@@ -1,56 +1,47 @@
-import type { ThemeEffects } from '../../../themes/theme.types';
+import type { ThemeEffects, VisualEffectConfig } from '../../../themes/theme.types';
 import type { EffectModule } from '../../core/VisualEngine';
 
 export class FogEffect implements EffectModule {
-  id = 'fog';
-  private width: number = 0;
-  private height: number = 0;
-  private offset: number = 0;
-  private intensity: number = 0.5;
+  readonly id = 'fog';
+  private width = 1;
+  private height = 1;
+  private offset = 0;
+  private texture: HTMLCanvasElement | null = null;
+  private textureColor = '';
 
-  initialize(ctx: CanvasRenderingContext2D): void {
-    this.width = ctx.canvas.width;
-    this.height = ctx.canvas.height;
+  initialize(ctx: CanvasRenderingContext2D) { this.resize(ctx.canvas.width, ctx.canvas.height); }
+  resize(width: number, height: number) { this.width = width; this.height = height; }
+  update(delta: number, config: VisualEffectConfig) {
+    this.offset = (this.offset + delta * (8 + config.speed * 34)) % this.width;
   }
-
-  update(deltaTime: number, intensity: number, speed: number, _performanceMode: boolean): void {
-    this.intensity = intensity;
-    this.offset += deltaTime * speed * 50;
-  }
-
-  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, performanceMode: boolean): void {
-    const baseColor = theme.fogColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-    let colorPrefix = 'rgba(255, 255, 255, ';
-    if (baseColor) {
-      colorPrefix = `rgba(${baseColor[1]}, ${baseColor[2]}, ${baseColor[3]}, `;
-    }
-
-    const gradient = ctx.createLinearGradient(0, 0, this.width, 0);
-    const alpha = this.intensity * 0.3;
-    
-    gradient.addColorStop(0, `${colorPrefix}0)`);
-    gradient.addColorStop(0.5, `${colorPrefix}${alpha})`);
-    gradient.addColorStop(1, `${colorPrefix}0)`);
-
-    ctx.fillStyle = gradient;
-    
-    // Simulate moving fog with multiple layers - reduced for performance
-    const layers = performanceMode ? 1 : 2;
+  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, config: VisualEffectConfig, reduced: boolean) {
+    const color = config.color || theme.fogColor;
+    const layers = reduced ? 2 : 4;
+    const texture = this.getTexture(color);
+    const baseAlpha = ctx.globalAlpha;
+    const blobWidth = this.width * .82;
+    const blobHeight = this.height * .72;
     for (let i = 0; i < layers; i++) {
-      const shift = (this.offset * (1 + i * 0.2)) % this.width;
-      ctx.globalAlpha = 1 / (i + 1); // Fade secondary layers
-      ctx.save();
-      ctx.translate(shift - this.width, 0);
-      ctx.fillRect(0, 0, this.width * 2, this.height);
-      ctx.restore();
+      const travel = this.width + blobWidth;
+      const x = ((this.offset * (1 + i * .16) + i * this.width / layers) % travel) - blobWidth;
+      const y = this.height * (.1 + i * .1);
+      ctx.globalAlpha = baseAlpha * config.intensity * .32;
+      ctx.drawImage(texture, x, y, blobWidth, blobHeight);
+      if (x + blobWidth < this.width * .12) ctx.drawImage(texture, x + travel, y, blobWidth, blobHeight);
     }
-    ctx.globalAlpha = 1.0;
   }
+  destroy() { this.texture = null; }
 
-  resize(width: number, height: number): void {
-    this.width = width;
-    this.height = height;
+  private getTexture(color: string) {
+    if (this.texture && this.textureColor === color) return this.texture;
+    const texture = document.createElement('canvas');
+    texture.width = 480; texture.height = 260;
+    const context = texture.getContext('2d')!;
+    const gradient = context.createRadialGradient(240, 130, 0, 240, 130, 235);
+    gradient.addColorStop(0, color); gradient.addColorStop(.55, color); gradient.addColorStop(1, 'transparent');
+    context.fillStyle = gradient; context.fillRect(0, 0, texture.width, texture.height);
+    this.texture = texture; this.textureColor = color;
+    return texture;
   }
-
-  destroy(): void {}
 }
+

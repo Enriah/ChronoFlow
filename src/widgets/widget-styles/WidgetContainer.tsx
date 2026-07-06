@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import type { WidgetStyle } from '../../themes/theme.types';
 import { useThemeStore } from '../../store/useThemeStore';
-import { PersistentAssetService } from '../../services/PersistentAssetService';
+import { getWidgetChromeClassName, getWidgetChromeStyle, normalizeWidgetStyle } from './widgetStyleEngine';
 
 interface WidgetContainerProps {
   style: WidgetStyle;
@@ -18,6 +18,11 @@ export const WidgetContainer: React.FC<WidgetContainerProps> = ({
   noPadding = false
 }) => {
   const performanceMode = useThemeStore(state => state.performanceMode);
+  const animatedBackdrop = useThemeStore((state) => {
+    const environment = state.isEditing ? state.draftEnvironment : state.activeEnvironment;
+    return environment.effects.some((effect) => effect.enabled && effect.opacity > 0);
+  });
+  const normalizedStyle = normalizeWidgetStyle(style);
 
   if (!style) {
     return (
@@ -27,88 +32,21 @@ export const WidgetContainer: React.FC<WidgetContainerProps> = ({
     );
   }
 
-  const getBackgroundStyle = (): React.CSSProperties => {
-    const { 
-      backgroundType = 'glass', 
-      backgroundImage = '', 
-      opacity = 0.15, 
-      blur = 20 
-    } = style || {};
-    
-    const baseStyle: React.CSSProperties = {
-      opacity: 1, // We control opacity via background color
-    };
-
-    switch (backgroundType) {
-      case 'solid':
-        return { ...baseStyle, backgroundColor: `rgba(var(--surface-rgb, 255, 255, 255), ${opacity})` };
-      case 'gradient':
-        return { 
-          ...baseStyle, 
-          background: `linear-gradient(135deg, rgba(var(--primary-rgb), ${opacity * 0.5}), rgba(var(--accent-rgb), ${opacity * 0.5}))` 
-        };
-      case 'glass':
-        // Optimize: Limit blur in performance mode or high intensity
-        const effectiveBlur = performanceMode ? 0 : Math.min(blur, 12);
-        return { 
-          ...baseStyle, 
-          backgroundColor: `rgba(var(--surface-rgb, 255, 255, 255), ${opacity})`,
-          backdropFilter: effectiveBlur > 0 ? `blur(${effectiveBlur}px)` : 'none',
-          WebkitBackdropFilter: effectiveBlur > 0 ? `blur(${effectiveBlur}px)` : 'none',
-        };
-      case 'image':
-        const resolvedUrl = PersistentAssetService.getAssetUrl(backgroundImage);
-        return { 
-          ...baseStyle, 
-          backgroundImage: resolvedUrl ? `url("${resolvedUrl}")` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundColor: `rgba(0, 0, 0, ${1 - opacity})`, // Darken if opacity is low
-        };
-      default:
-        return baseStyle;
-    }
-  };
-
-  const getBorderStyle = (): string => {
-    switch (style.borderStyle) {
-      case 'neon':
-        return 'border-2 border-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]';
-      case 'terminal':
-        return 'border border-primary rounded-none';
-      case 'soft':
-        return 'border-0 shadow-xl';
-      case 'minimal':
-      default:
-        return 'border border-border/50';
-    }
-  };
-
-  const shadowStyle: React.CSSProperties = {
-    boxShadow: style.shadowIntensity > 0 
-      ? `0 ${style.shadowIntensity * 10}px ${style.shadowIntensity * 30}px rgba(0,0,0,${style.shadowIntensity * 0.3})`
-      : 'none',
-  };
-
   return (
     <div 
       className={clsx(
         "relative overflow-hidden transition-all duration-500",
-        getBorderStyle(),
+        getWidgetChromeClassName(normalizedStyle),
         className
       )}
-      style={{
-        borderRadius: `${style.borderRadius}px`,
-        ...getBackgroundStyle(),
-        ...shadowStyle,
-      }}
+      style={getWidgetChromeStyle(normalizedStyle, { performanceMode, animatedBackdrop })}
     >
       {/* Interior Glow Effect */}
-      {style.glowIntensity > 0 && (
+      {normalizedStyle.glowIntensity > 0 && (
         <div 
           className="absolute inset-0 pointer-events-none opacity-20"
           style={{
-            boxShadow: `inset 0 0 ${style.glowIntensity * 40}px var(--primary)`,
+            boxShadow: `inset 0 0 ${normalizedStyle.glowIntensity * 40}px var(--widget-accent)`,
           }}
         />
       )}

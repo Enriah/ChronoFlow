@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type WidgetType = 'countdown' | 'timeline' | 'weekly-focus';
+export type WidgetType = 'countdown';
 
 interface WidgetState {
   openWidgets: WidgetType[];
@@ -9,7 +9,6 @@ interface WidgetState {
     alwaysOnTop: boolean;
     opacity: number;
     blurAmount: number;
-    showMilliseconds: boolean;
   };
 
   // Actions
@@ -26,7 +25,6 @@ export const useWidgetStore = create<WidgetState>()(
         alwaysOnTop: true,
         opacity: 0.9,
         blurAmount: 10,
-        showMilliseconds: true,
       },
 
       registerWidget: (type) => set((state) => ({

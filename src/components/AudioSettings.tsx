@@ -9,36 +9,30 @@ import { useAudioStore } from '../store/useAudioStore';
 import type { AudioEventType } from '../systems/audio/audio.types';
 import { Button } from './ui/Button';
 
-const EVENT_LABELS: Record<AudioEventType, { label: string, icon: any, description: string }> = {
+const EVENT_LABELS: Record<AudioEventType, { label: string, icon: any }> = {
   taskStarted: { 
     label: 'Task Started', 
-    icon: Play, 
-    description: 'Played when a new focus session begins.' 
+    icon: Play,
   },
   taskEndingSoon: { 
     label: '5 Minute Warning', 
-    icon: Clock, 
-    description: 'Subtle alert when task is nearing completion.' 
+    icon: Clock,
   },
   taskCompleted: { 
     label: 'Task Completed', 
-    icon: CheckCircle, 
-    description: 'Played when a focus session ends successfully.' 
+    icon: CheckCircle,
   },
   nextTaskStarting: { 
     label: 'Next Task Starting', 
-    icon: ArrowRight, 
-    description: 'Alert for the immediate transition to a new task.' 
+    icon: ArrowRight,
   },
   plannerReminder: { 
     label: 'Planner Reminder', 
-    icon: Bell, 
-    description: 'Notification for scheduled planning sessions.' 
+    icon: Bell,
   },
   warningNotification: { 
     label: 'System Warning', 
-    icon: AlertTriangle, 
-    description: 'Important alerts or system notifications.' 
+    icon: AlertTriangle,
   },
 };
 
@@ -89,7 +83,6 @@ export function AudioSettings() {
             </div>
             <div>
               <h4 className="text-sm font-black text-text tracking-tight uppercase">Master Volume</h4>
-              <p className="text-[10px] text-text-secondary font-black tracking-widest opacity-60">Global Audio Intensity</p>
             </div>
           </div>
           
@@ -135,7 +128,6 @@ export function AudioSettings() {
                         <h4 className="text-sm font-black text-text tracking-tight uppercase truncate">{info.label}</h4>
                         {!setting.enabled && <span className="text-[8px] bg-surface-hover px-2 py-0.5 rounded-full text-text-secondary font-black uppercase tracking-tighter shrink-0 border border-border/10">Muted</span>}
                       </div>
-                      <p className="text-[10px] text-text-secondary font-medium leading-relaxed opacity-70 line-clamp-2">{info.description}</p>
                     </div>
                   </div>
 
@@ -209,7 +201,6 @@ export function AudioSettings() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 px-2">
           <div>
             <h4 className="text-xs font-black text-text uppercase tracking-widest">Custom Sound Bank</h4>
-            <p className="text-[10px] text-text-secondary font-medium mt-1">Manage your imported audio files.</p>
           </div>
           
           <div className="w-full sm:w-auto">
@@ -255,7 +246,6 @@ export function AudioSettings() {
                   </div>
                   <div className="min-w-0">
                     <h5 className="text-xs font-black text-text truncate uppercase tracking-tight">{sound.name}</h5>
-                    <p className="text-[8px] text-text-secondary font-black uppercase opacity-60 mt-0.5">Custom Asset</p>
                   </div>
                 </div>
                 

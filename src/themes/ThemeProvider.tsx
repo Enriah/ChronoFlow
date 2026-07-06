@@ -27,6 +27,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.style.setProperty('--bg', colors.background);
     root.style.setProperty('--surface', colors.surface);
     root.style.setProperty('--surface-hover', colors.surfaceHover);
+    root.style.setProperty('--surface-elevated', colors.surfaceElevated);
+    root.style.setProperty('--surface-muted', colors.surfaceMuted);
     root.style.setProperty('--primary', colors.primary);
     root.style.setProperty('--primary-fg', colors.primaryForeground);
     root.style.setProperty('--text', colors.text);
@@ -38,6 +40,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.style.setProperty('--primary-rgb', hexToRgb(colors.primary));
     root.style.setProperty('--accent-rgb', hexToRgb(colors.accent));
     root.style.setProperty('--surface-rgb', hexToRgb(colors.surface));
+    root.style.setProperty('--surface-elevated-rgb', hexToRgb(colors.surfaceElevated));
     root.style.setProperty('--bg-rgb', hexToRgb(colors.background));
 
     // Inject typography

@@ -1,4 +1,5 @@
 import type { LinkedAction } from './LinkedAction';
+import type { DevTaskStatus, DevTaskType } from './DevTask';
 
 export type Schedule = {
   id: string;
@@ -15,4 +16,13 @@ export type Schedule = {
   linkedUrl?: string;
   notificationsEnabled?: boolean;
   fromPlanner?: boolean;
+  description?: string;
+  type?: DevTaskType;
+  project?: string;
+  tags?: string[];
+  plannedDurationMinutes?: number;
+  actualDurationMinutes?: number;
+  status?: DevTaskStatus;
+  priority?: 'low' | 'medium' | 'high';
+  deepWork?: boolean;
 };

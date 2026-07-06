@@ -28,15 +28,7 @@ export const BackgroundLayer: React.FC = () => {
   }
 
   if (background.type === 'gradient') {
-    return (
-      <div 
-        className="fixed inset-0 z-0"
-        style={{ 
-          background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-          ...style 
-        }}
-      />
-    );
+    return <div className="fixed inset-0 z-0 bg-surface-muted" style={style} />;
   }
 
   if (background.type === 'video') {

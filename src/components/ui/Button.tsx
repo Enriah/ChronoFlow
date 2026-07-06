@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variants = {
     primary: "bg-primary text-primary-fg shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95",
-    secondary: "bg-surface/50 backdrop-blur-md border border-border text-text hover:bg-surface-hover active:scale-95",
+    secondary: "bg-surface-elevated border border-border text-text hover:bg-surface-hover active:scale-95",
     ghost: "bg-transparent text-text-secondary hover:text-text hover:bg-surface-hover active:scale-95",
     danger: "bg-red-500/10 text-red-500 hover:bg-red-500/20 active:scale-95",
   };
@@ -44,11 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
       )}
       {...props}
     >
-      <span className="truncate">
-        {isLoading ? (
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        ) : children}
-      </span>
+      {isLoading ? <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> : children}
     </button>
   );
 };

@@ -2,21 +2,22 @@ import { useEffect, useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { useAppStore } from './store/useAppStore';
 import { usePlannerStore } from './store/usePlannerStore';
-import { useAnalyticsStore } from './store/useAnalyticsStore';
-import { useCompanionStore } from './store/useCompanionStore';
-import { useSessionTracker } from './hooks/useSessionTracker';
-import { useCompanionManager } from './hooks/useCompanionManager';
+import { useWorkSessionStore } from './core/sessions/useWorkSessionStore';
+import { useSessionTemplateStore } from './features/session-templates/useSessionTemplateStore';
+import { useDeveloperActionStore } from './features/developer-actions/useDeveloperActionStore';
 import { SyncManager } from './services/widgets/SyncManager';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownFloating } from './widgets/floating/CountdownFloating';
-import { TimelineFloating } from './widgets/floating/TimelineFloating';
-import { WeeklyFocusFloating } from './widgets/floating/WeeklyFocusFloating';
+import { TimelineRuntimeController } from './features/event-timeline/TimelineRuntimeController';
+import { ScheduleTimelineController } from './features/event-timeline/ScheduleTimelineController';
 
 function App() {
   const hydrateApp = useAppStore(state => state.hydrate);
   const hydratePlanner = usePlannerStore(state => state.hydrate);
-  const hydrateAnalytics = useAnalyticsStore(state => state.hydrate);
-  const hydrateCompanion = useCompanionStore(state => state.hydrate);
+  const hydrateSessions = useWorkSessionStore(state => state.hydrate);
+  const hydrateTemplates = useSessionTemplateStore(state => state.hydrate);
+  const hydrateActions = useDeveloperActionStore(state => state.hydrate);
+  const tickSessions = useWorkSessionStore(state => state.tick);
   
   const tick = useAppStore(state => state.tick);
   const checkRollover = useAppStore(state => state.checkRollover);
@@ -40,8 +41,9 @@ function App() {
       // Hydrate all stores
       hydrateApp();
       hydratePlanner();
-      hydrateAnalytics();
-      await hydrateCompanion();
+      hydrateSessions();
+      hydrateTemplates();
+      hydrateActions();
 
       setIsReady(true);
 
@@ -64,10 +66,7 @@ function App() {
     };
     
     init();
-  }, [hydrateApp, hydratePlanner, hydrateAnalytics, hydrateCompanion]);
-
-  useSessionTracker();
-  useCompanionManager();
+  }, [hydrateApp, hydratePlanner, hydrateSessions, hydrateTemplates, hydrateActions]);
 
   useEffect(() => {
     // ALWAYS run the interval for rollover detection, even in widgets
@@ -77,22 +76,19 @@ function App() {
       } else {
         tick();
       }
+      tickSessions();
     }, 1000); 
 
     return () => clearInterval(interval);
-  }, [tick, checkRollover, widgetType]);
+  }, [tick, checkRollover, tickSessions, widgetType]);
 
   // Don't render until stores are hydrated to avoid layout shifts or missing data
   if (!isReady) return null;
 
   // Render Widget UI if we are in a widget window
   if (widgetType === 'countdown') return <CountdownFloating />;
-  if (widgetType === 'timeline') return <TimelineFloating />;
-  if (widgetType === 'weekly-focus') return <WeeklyFocusFloating />;
 
-  return (
-    <Dashboard />
-  );
+  return <><TimelineRuntimeController /><ScheduleTimelineController /><Dashboard /></>;
 }
 
 export default App;

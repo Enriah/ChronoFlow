@@ -1,9 +1,11 @@
-export type ThemeType = 'minimal' | 'neon' | 'terminal' | 'soft'| 'fantasy' | 'custom';
+export type ThemeType = 'minimal' | 'neon' | 'terminal' | 'soft' | 'fantasy' | 'maple' | 'sakura' | 'galaxy' | 'custom';
 
 export interface ThemeColors {
   background: string;
   surface: string;
   surfaceHover: string;
+  surfaceElevated: string;
+  surfaceMuted: string;
   primary: string;
   primaryForeground: string;
   text: string;
@@ -36,6 +38,8 @@ export interface ThemeEffects {
   matrixColor: string;
   electricityColor: string;
   fogColor: string;
+  auroraColor?: string;
+  mapleColor?: string;
 }
 
 export interface ThemeConfig {
@@ -48,7 +52,7 @@ export interface ThemeConfig {
   effects: ThemeEffects;
 }
 
-export type VisualEffectType = 'rain' | 'sakura' | 'snow' | 'electricity' | 'stars' | 'matrix' | 'fog';
+export type VisualEffectType = 'aurora' | 'rain' | 'sakura' | 'maple_leaf' | 'snow' | 'electricity' | 'stars' | 'matrix' | 'fog';
 
 export interface VisualEffectConfig {
   id: VisualEffectType;
@@ -78,7 +82,9 @@ export interface BackgroundConfig {
 }
 
 export type WidgetBackgroundType = "solid" | "gradient" | "image" | "glass";
-export type WidgetBorderStyle = "minimal" | "neon" | "terminal" | "soft";
+export type WidgetBorderStyle = "minimal" | "neon" | "terminal" | "soft" | "halo" | "gradient" | "double";
+export type WidgetBorderEffect = "none" | "glow" | "pulse" | "scan" | "corners";
+export type WidgetSurfaceEffect = "none" | "sheen" | "grid" | "grain";
 
 export interface WidgetStyle {
   backgroundType: WidgetBackgroundType;
@@ -86,9 +92,14 @@ export interface WidgetStyle {
   opacity: number;
   blur: number;
   borderRadius: number;
+  borderWidth: number;
+  borderOpacity: number;
   glowIntensity: number;
   borderStyle: WidgetBorderStyle;
+  borderEffect: WidgetBorderEffect;
   shadowIntensity: number;
+  surfaceEffect: WidgetSurfaceEffect;
+  accentColor?: string;
 }
 
 export interface EnvironmentConfig {

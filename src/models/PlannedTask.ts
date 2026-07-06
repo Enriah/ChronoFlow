@@ -1,3 +1,7 @@
+import type { DevTaskStatus, DevTaskType } from './DevTask';
+import type { LinkedAction } from './LinkedAction';
+import type { TimelineEvent, TimelineTrack } from './EventTimeline';
+
 export type PlannedTask = {
   id: string;
   title: string;
@@ -9,4 +13,14 @@ export type PlannedTask = {
   tags?: string[];
   completed?: boolean;
   color?: string;
+  type?: DevTaskType;
+  project?: string;
+  plannedDurationMinutes?: number;
+  actualDurationMinutes?: number;
+  status?: DevTaskStatus;
+  priority?: 'low' | 'medium' | 'high';
+  deepWork?: boolean;
+  linkedActions?: LinkedAction[];
+  timelineTracks?: TimelineTrack[];
+  timelineEvents?: TimelineEvent[];
 };

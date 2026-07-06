@@ -1,190 +1,144 @@
-import type { ThemeEffects } from '../../themes/theme.types';
+import type { ThemeEffects, VisualEffectConfig, VisualEffectType } from '../../themes/theme.types';
 
 export interface EffectModule {
-  id: string;
+  readonly id: VisualEffectType;
   initialize(ctx: CanvasRenderingContext2D): void;
-  update(deltaTime: number, intensity: number, speed: number, performanceMode: boolean): void;
-  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, performanceMode: boolean): void;
-  destroy(): void;
   resize(width: number, height: number): void;
+  update(deltaSeconds: number, config: VisualEffectConfig, performanceMode: boolean): void;
+  render(ctx: CanvasRenderingContext2D, theme: ThemeEffects, config: VisualEffectConfig, performanceMode: boolean): void;
+  destroy(): void;
 }
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
 export class VisualEngine {
   private canvas: HTMLCanvasElement | null = null;
-  private ctx: CanvasRenderingContext2D | null = null;
-  private effects: Map<string, EffectModule> = new Map();
-  private lastTime: number = 0;
-  private animationFrameId: number | null = null;
-  private isRunning: boolean = false;
-  private currentTheme: ThemeEffects | null = null;
-  
-  // Optimization Properties
-  private renderScale: number = 0.75; // Render at 75% resolution and upscale
-  private targetFPS: number = 30; // Cap at 30 FPS for efficiency
-  private lastRenderTime: number = 0;
-  private isHidden: boolean = false;
-  private isFocused: boolean = true;
-  private dpr: number = 1;
-  private performanceMode: boolean = false;
-  private MAX_WIDTH: number = 1600; // Limit resolution for GPU safety
-
-  constructor() {
-    this.dpr = Math.min(window.devicePixelRatio, 1.25); 
-    this.setupVisibilityListeners();
-  }
-
-  private setupVisibilityListeners() {
-    document.addEventListener('visibilitychange', () => {
-      this.isHidden = document.hidden;
-    });
-    window.addEventListener('focus', () => { this.isFocused = true; });
-    window.addEventListener('blur', () => { this.isFocused = false; });
-  }
+  private context: CanvasRenderingContext2D | null = null;
+  private effects = new Map<VisualEffectType, EffectModule>();
+  private configs = new Map<VisualEffectType, VisualEffectConfig>();
+  private theme: ThemeEffects | null = null;
+  private frameId: number | null = null;
+  private lastFrame = 0;
+  private lastPaint = 0;
+  private running = false;
+  private performanceMode = false;
+  private width = 0;
+  private height = 0;
+  private renderScale = 0.78;
+  private hasPaintedContent = false;
 
   setCanvas(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
-    this.handleResize();
-    window.addEventListener('resize', this.handleResize.bind(this));
+    this.context = canvas.getContext('2d', { alpha: true });
+    this.resize();
+    this.effects.forEach((effect) => effect.initialize(this.context!));
+    window.addEventListener('resize', this.resize);
   }
 
-  setRenderScale(scale: number) {
-    this.renderScale = Math.max(0.2, Math.min(1, scale));
-    this.handleResize();
+  register(effect: EffectModule) {
+    this.effects.set(effect.id, effect);
+    if (this.context) effect.initialize(this.context);
   }
 
-  setTargetFPS(fps: number) {
-    this.targetFPS = Math.max(1, fps);
+  configure(configs: VisualEffectConfig[], theme: ThemeEffects) {
+    this.configs = new Map(configs.map((config) => [config.id, config]));
+    this.theme = theme;
+    const nextScale = this.getRenderScale();
+    if (Math.abs(nextScale - this.renderScale) > .01) {
+      this.renderScale = nextScale;
+      this.resize();
+    }
   }
 
   setPerformanceMode(enabled: boolean) {
+    if (this.performanceMode === enabled) return;
     this.performanceMode = enabled;
+    this.renderScale = this.getRenderScale();
+    this.resize();
   }
 
-  private handleResize = () => {
-    if (!this.canvas) return;
-    
-    // Scale canvas resolution down for efficiency, cap at MAX_WIDTH
-    let width = window.innerWidth * this.dpr * this.renderScale;
-    let height = window.innerHeight * this.dpr * this.renderScale;
-    
-    if (width > this.MAX_WIDTH) {
-      const ratio = this.MAX_WIDTH / width;
-      width = this.MAX_WIDTH;
-      height *= ratio;
-    }
-
-    this.canvas.width = width;
-    this.canvas.height = height;
-    
-    // Use CSS to upscale the canvas
-    this.canvas.style.width = `${window.innerWidth}px`;
-    this.canvas.style.height = `${window.innerHeight}px`;
-    
-    this.effects.forEach(effect => {
-      effect.resize(width, height);
-    });
-  };
-
-  registerEffect(effect: EffectModule) {
-    if (this.ctx && this.canvas) {
-      effect.initialize(this.ctx);
-      effect.resize(this.canvas.width, this.canvas.height);
-    }
-    this.effects.set(effect.id, effect);
-  }
-
-  unregisterEffect(id: string) {
-    const effect = this.effects.get(id);
-    if (effect) {
-      effect.destroy();
-      this.effects.delete(id);
-    }
-  }
-
-  private currentConfigs: Record<string, { intensity: number, speed: number, enabled: boolean }> = {};
-
-  start(effectConfigs: Record<string, { intensity: number, speed: number, enabled: boolean }>, theme: ThemeEffects) {
-    this.currentConfigs = effectConfigs;
-    this.currentTheme = theme;
-    if (this.isRunning) return;
-    this.isRunning = true;
-    this.lastTime = performance.now();
-    this.lastRenderTime = this.lastTime;
-    this.tick(this.lastTime);
-  }
-
-  updateConfigs(configs: Record<string, { intensity: number, speed: number, enabled: boolean }>, theme: ThemeEffects) {
-    this.currentConfigs = configs;
-    this.currentTheme = theme;
-  }
-
-  stop() {
-    this.isRunning = false;
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-  }
-
-  private tick = (currentTime: number) => {
-    if (!this.isRunning) return;
-
-    this.animationFrameId = requestAnimationFrame((time) => this.tick(time));
-
-    // Throttle rendering based on visibility and target FPS
-    if (this.isHidden) return; // Don't render if hidden
-    
-    const effectiveFPS = this.isFocused ? this.targetFPS : 10; // Drop to 10 FPS when out of focus
-    const frameInterval = 1000 / effectiveFPS;
-    const elapsedSinceLastRender = currentTime - this.lastRenderTime;
-
-    if (elapsedSinceLastRender < frameInterval) return;
-
-    const deltaTime = (currentTime - this.lastTime) / 1000;
-    this.lastTime = currentTime;
-    this.lastRenderTime = currentTime;
-
-    this.update(deltaTime, this.currentConfigs, this.performanceMode);
-    this.render(this.currentConfigs, this.performanceMode);
-  };
-
-  private update(deltaTime: number, effectConfigs: Record<string, { intensity: number, speed: number, enabled: boolean }>, performanceMode: boolean) {
-    this.effects.forEach(effect => {
-      const config = effectConfigs[effect.id];
-      if (config?.enabled) {
-        // Adaptive intensity based on focus/performance
-        const intensityMult = this.isFocused ? 1 : 0.5;
-        effect.update(deltaTime, config.intensity * intensityMult, config.speed, performanceMode); 
-      }
-    });
-  }
-
-  private render(effectConfigs: Record<string, { enabled: boolean }>, performanceMode: boolean) {
-    if (!this.ctx || !this.canvas || !this.currentTheme) return;
-
-    // Only clear if there are active effects to render
-    const hasActiveEffects = Object.values(effectConfigs).some(c => c.enabled);
-    if (!hasActiveEffects) {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      return;
-    }
-
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    this.effects.forEach(effect => {
-      if (effectConfigs[effect.id]?.enabled) {
-        effect.render(this.ctx!, this.currentTheme!, performanceMode);
-      }
-    });
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.lastFrame = performance.now();
+    this.lastPaint = 0;
+    this.frameId = requestAnimationFrame(this.tick);
   }
 
   destroy() {
-    this.stop();
-    window.removeEventListener('resize', this.handleResize);
-    this.effects.forEach(effect => effect.destroy());
+    this.running = false;
+    if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+    this.frameId = null;
+    window.removeEventListener('resize', this.resize);
+    this.effects.forEach((effect) => effect.destroy());
     this.effects.clear();
+    this.context?.clearRect(0, 0, this.width, this.height);
+    this.context = null;
+    this.canvas = null;
+  }
+
+  private resize = () => {
+    if (!this.canvas || !this.context) return;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25) * this.renderScale;
+    this.width = Math.max(1, Math.round(window.innerWidth * pixelRatio));
+    this.height = Math.max(1, Math.round(window.innerHeight * pixelRatio));
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+    this.canvas.style.width = `${window.innerWidth}px`;
+    this.canvas.style.height = `${window.innerHeight}px`;
+    this.effects.forEach((effect) => effect.resize(this.width, this.height));
+  };
+
+  private tick = (time: number) => {
+    if (!this.running) return;
+    this.frameId = requestAnimationFrame(this.tick);
+    if (document.hidden || !this.context || !this.theme) return;
+
+    const active = this.getActiveConfigs();
+    if (!active.length) {
+      if (this.hasPaintedContent) this.context.clearRect(0, 0, this.width, this.height);
+      this.hasPaintedContent = false;
+      return;
+    }
+
+    const targetFps = this.getTargetFps(active);
+    if (time - this.lastPaint < 1000 / targetFps) return;
+    const deltaSeconds = Math.min(0.05, Math.max(0.001, (time - this.lastFrame) / 1000));
+    this.lastFrame = time;
+    this.lastPaint = time;
+
+    this.context.clearRect(0, 0, this.width, this.height);
+    this.hasPaintedContent = true;
+    for (const config of active) {
+      const effect = this.effects.get(config.id);
+      if (!effect) continue;
+      effect.update(deltaSeconds, config, this.performanceMode);
+      this.context.save();
+      this.context.globalAlpha = clamp01(config.opacity);
+      effect.render(this.context, this.theme, config, this.performanceMode);
+      this.context.restore();
+    }
+  };
+
+  private getActiveConfigs() {
+    return [...this.configs.values()].filter((config) => config.enabled && clamp01(config.opacity) > 0);
+  }
+
+  private getRenderScale() {
+    if (this.performanceMode) return .5;
+    const active = this.getActiveConfigs();
+    const heavyCount = active.filter((config) => config.id === 'aurora' || config.id === 'fog' || config.id === 'matrix').length;
+    if (active.length >= 5 || heavyCount >= 2) return .64;
+    if (active.length >= 3 || heavyCount === 1) return .72;
+    return .78;
+  }
+
+  private getTargetFps(active: VisualEffectConfig[]) {
+    if (this.performanceMode) return 18;
+    if (!document.hasFocus()) return 12;
+    const onlySlowEffects = active.every((config) => config.id === 'aurora' || config.id === 'fog' || config.id === 'stars');
+    if (onlySlowEffects) return 22;
+    if (active.length >= 4) return 24;
+    return 30;
   }
 }
-
-export const visualEngine = new VisualEngine();

@@ -1,12 +1,11 @@
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { Clock, CalendarDays, Edit2, Trash2, Globe, Laptop, FolderOpen, ExternalLink } from 'lucide-react';
+import { Clock, CalendarDays, Edit2, Trash2, Globe, Laptop, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { Schedule } from '../../models/Schedule';
 import { WidgetContainer } from '../widget-styles/WidgetContainer';
-import { WidgetManager } from '../../services/widgets/WidgetManager';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,9 +13,10 @@ function cn(...inputs: ClassValue[]) {
 
 interface TimelineWidgetProps {
   onEdit: (schedule: Schedule) => void;
+  compact?: boolean;
 }
 
-export function TimelineWidget({ onEdit }: TimelineWidgetProps) {
+export function TimelineWidget({ onEdit, compact = false }: TimelineWidgetProps) {
   const schedules = useAppStore(state => state.schedules);
   const deleteSchedule = useAppStore(state => state.deleteSchedule);
   
@@ -33,39 +33,32 @@ export function TimelineWidget({ onEdit }: TimelineWidgetProps) {
       style={style} 
       className="h-full"
     >
-      <div className="flex items-center justify-between mb-8 relative z-10">
-        <h3 className="text-xl font-black tracking-tight text-text flex items-center gap-2">
+      <div className={`flex items-center justify-between relative z-10 ${compact ? 'mb-4' : 'mb-8'}`}>
+        <h3 className={`${compact ? 'text-base' : 'text-xl'} font-black tracking-tight text-text flex items-center gap-2`}>
           <CalendarDays className="w-5 h-5 text-primary" />
           {isTerminal ? "> SCHED_LOG" : "Today's Timeline"}
         </h3>
-        <button 
-          onClick={() => WidgetManager.openWidget('timeline')}
-          className="p-2 hover:bg-surface-hover rounded-lg transition-colors text-text-secondary hover:text-text"
-          title="Open Floating Widget"
-        >
-          <ExternalLink className="w-4 h-4" />
-        </button>
       </div>
 
       <div className="space-y-3 overflow-y-auto pr-2 flex-1 relative z-10 custom-scrollbar">
-        {schedules.sort((a, b) => a.startTime - b.startTime).map(schedule => {
+        {[...schedules].sort((a, b) => a.startTime - b.startTime).map(schedule => {
           const hasUrls = schedule.linkedActions?.some(a => a.type === 'url' && a.enabled);
-          const hasApps = schedule.linkedActions?.some(a => a.type === 'application' && a.enabled);
+          const hasApps = schedule.linkedActions?.some(a => a.type === 'app' && a.enabled);
           const hasFolders = schedule.linkedActions?.some(a => a.type === 'folder' && a.enabled);
 
           return (
             <div 
               key={schedule.id}
               className={cn(
-                "group flex items-center gap-4 p-4 rounded-[calc(var(--radius)/1.5)] bg-surface-hover/30 hover:bg-surface-hover/60 transition-all border border-border/50 hover:border-primary/30",
+                `group flex items-center rounded-[calc(var(--radius)/1.5)] bg-surface-hover/30 hover:bg-surface-hover/60 transition-all border border-border/50 hover:border-primary/30 ${compact ? 'gap-2 p-3' : 'gap-4 p-4'}`,
                 isTerminal && "font-mono"
               )}
             >
-              <div className={cn("w-2 h-10 rounded-full shrink-0", !isTerminal && schedule.color, isTerminal && "bg-primary")} />
+              <div className={cn(`${compact ? 'w-1 h-9' : 'w-2 h-10'} rounded-full shrink-0`, !isTerminal && schedule.color, isTerminal && "bg-primary")} />
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-base font-bold text-text truncate">
+                  <h4 className={`${compact ? 'text-sm' : 'text-base'} font-bold text-text truncate`}>
                     {isTerminal && "> "}{schedule.title}
                   </h4>
                   {(hasUrls || hasApps || hasFolders) && (

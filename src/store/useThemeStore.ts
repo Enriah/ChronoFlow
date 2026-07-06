@@ -10,6 +10,7 @@ import type {
   WidgetStyle
 } from '../themes/theme.types';
 import { themes, minimalTheme } from '../themes/configs';
+import { DEFAULT_WIDGET_STYLE, normalizeWidgetStyle } from '../widgets/widget-styles/widgetStyleEngine';
 
 export interface SavedPreset extends EnvironmentConfig {
   id: string;
@@ -57,16 +58,6 @@ interface ThemeState {
   deletePreset: (presetId: string) => void;
 }
 
-const DEFAULT_WIDGET_STYLE: WidgetStyle = {
-  backgroundType: "glass",
-  opacity: 0.15,
-  blur: 20,
-  borderRadius: 24,
-  glowIntensity: 0.5,
-  borderStyle: "minimal",
-  shadowIntensity: 0.2,
-};
-
 const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
   themeId: 'minimal',
   background: {
@@ -76,8 +67,10 @@ const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
     brightness: 1,
   },
   effects: [
+    { id: 'aurora', enabled: false, intensity: 0.55, speed: 0.35, opacity: 0.45 },
     { id: 'rain', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
     { id: 'sakura', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+    { id: 'maple_leaf', enabled: false, intensity: 0.5, speed: 0.4, opacity: 0.65 },
     { id: 'snow', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
     { id: 'electricity', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
     { id: 'stars', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
@@ -98,11 +91,130 @@ const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
   rankingStyle: { ...DEFAULT_WIDGET_STYLE },
 };
 
+const withWidgetStyles = (style: Partial<WidgetStyle>) => {
+  const widgetStyle = normalizeWidgetStyle(style);
+  return {
+    countdownStyle: widgetStyle,
+    timelineStyle: widgetStyle,
+    plannerStyle: widgetStyle,
+    statsStyle: widgetStyle,
+    rankingStyle: widgetStyle,
+  };
+};
+
+const normalizeEnvironment = (environment?: Partial<EnvironmentConfig>): EnvironmentConfig => ({
+  ...DEFAULT_ENVIRONMENT,
+  ...(environment || {}),
+  background: {
+    ...DEFAULT_ENVIRONMENT.background,
+    ...(environment?.background || {}),
+  },
+  effects: DEFAULT_ENVIRONMENT.effects.map((fallback) => ({ ...fallback, ...(environment?.effects?.find((effect) => effect.id === fallback.id) || {}) })),
+  overlays: environment?.overlays || DEFAULT_ENVIRONMENT.overlays,
+  countdownStyle: normalizeWidgetStyle(environment?.countdownStyle),
+  timelineStyle: normalizeWidgetStyle(environment?.timelineStyle),
+  plannerStyle: normalizeWidgetStyle(environment?.plannerStyle),
+  statsStyle: normalizeWidgetStyle(environment?.statsStyle),
+  rankingStyle: normalizeWidgetStyle(environment?.rankingStyle),
+});
+
+const normalizePreset = (preset: SavedPreset): SavedPreset => ({
+  ...normalizeEnvironment(preset),
+  id: preset.id,
+  name: preset.name,
+  isCustom: preset.isCustom,
+});
+
 const INITIAL_PRESETS: SavedPreset[] = [
-  { ...DEFAULT_ENVIRONMENT, id: 'minimal', name: 'Minimal', themeId: 'minimal' },
-  { ...DEFAULT_ENVIRONMENT, id: 'neon', name: 'Neon', themeId: 'neon', effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'electricity' ? { ...e, enabled: true } : e), countdownStyle: { ...DEFAULT_WIDGET_STYLE, borderStyle: 'neon', glowIntensity: 1 } },
-  { ...DEFAULT_ENVIRONMENT, id: 'terminal', name: 'Terminal', themeId: 'terminal', overlays: DEFAULT_ENVIRONMENT.overlays.map(o => o.type === 'scanlines' ? { ...o, enabled: true } : o), countdownStyle: { ...DEFAULT_WIDGET_STYLE, borderStyle: 'terminal', borderRadius: 0 } },
-  { ...DEFAULT_ENVIRONMENT, id: 'soft', name: 'Soft', themeId: 'soft', effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'sakura' ? { ...e, enabled: true } : e), countdownStyle: { ...DEFAULT_WIDGET_STYLE, borderStyle: 'soft', borderRadius: 40 } },
+  { ...DEFAULT_ENVIRONMENT, id: 'minimal', name: 'Minimal Dark', themeId: 'minimal' },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({
+      borderStyle: 'halo',
+      borderEffect: 'glow',
+      borderWidth: 2,
+      borderOpacity: 0.75,
+      glowIntensity: 0.9,
+      shadowIntensity: 0.45,
+      surfaceEffect: 'sheen',
+    }),
+    id: 'neon',
+    name: 'Cyber Dev',
+    themeId: 'neon',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'electricity' ? { ...e, enabled: true } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({
+      borderStyle: 'terminal',
+      borderEffect: 'scan',
+      borderRadius: 0,
+      borderWidth: 1,
+      borderOpacity: 0.9,
+      glowIntensity: 0.35,
+      shadowIntensity: 0,
+      surfaceEffect: 'grid',
+    }),
+    id: 'terminal',
+    name: 'Terminal',
+    themeId: 'terminal',
+    overlays: DEFAULT_ENVIRONMENT.overlays.map(o => o.type === 'scanlines' ? { ...o, enabled: true } : o),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({
+      borderStyle: 'double',
+      borderEffect: 'corners',
+      borderRadius: 40,
+      borderWidth: 2,
+      borderOpacity: 0.42,
+      glowIntensity: 0.3,
+      shadowIntensity: 0.22,
+      surfaceEffect: 'sheen',
+    }),
+    id: 'soft',
+    name: 'Soft Focus',
+    themeId: 'soft',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'sakura' ? { ...e, enabled: true } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({
+      borderStyle: 'halo',
+      borderEffect: 'glow',
+      backgroundType: 'glass',
+      opacity: 0.88,
+      blur: 12,
+      borderRadius: 28,
+      borderWidth: 2,
+      borderOpacity: 0.72,
+      glowIntensity: 0.42,
+      shadowIntensity: 0.32,
+      surfaceEffect: 'none',
+    }),
+    id: 'fantasy',
+    name: 'Enchanted Realm',
+    themeId: 'fantasy',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => ['aurora', 'stars', 'fog'].includes(e.id) ? { ...e, enabled: true } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.9, blur: 10, borderStyle: 'soft', borderRadius: 16, borderWidth: 1, borderOpacity: 0.7, glowIntensity: 0.15, shadowIntensity: 0.35, surfaceEffect: 'none' }),
+    id: 'maple', name: 'Maple Forest', themeId: 'maple',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => ['maple_leaf', 'rain'].includes(e.id) ? { ...e, enabled: true } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.86, blur: 12, borderStyle: 'soft', borderRadius: 22, borderWidth: 1, borderOpacity: 0.62, glowIntensity: 0.18, shadowIntensity: 0.32, surfaceEffect: 'none' }),
+    id: 'sakura', name: 'Sakura Evening', themeId: 'sakura',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'sakura' ? { ...e, enabled: true, intensity: 0.65 } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.82, blur: 14, borderStyle: 'halo', borderEffect: 'glow', borderRadius: 18, borderWidth: 1, borderOpacity: 0.68, glowIntensity: 0.5, shadowIntensity: 0.45, surfaceEffect: 'none' }),
+    id: 'galaxy', name: 'Deep Galaxy', themeId: 'galaxy',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => ['stars', 'aurora'].includes(e.id) ? { ...e, enabled: true } : e),
+  },
 ];
 
 export const useThemeStore = create<ThemeState>()(
@@ -276,63 +388,28 @@ export const useThemeStore = create<ThemeState>()(
         savedPresets: state.savedPresets,
         performanceMode: state.performanceMode,
       }),
-      version: 5,
+      version: 7,
       merge: (persistedState: any, currentState: ThemeState) => {
         if (!persistedState) return currentState;
         return {
           ...currentState,
           ...persistedState,
-          activeEnvironment: {
-            ...currentState.activeEnvironment,
-            ...(persistedState.activeEnvironment || {}),
-            background: {
-              ...currentState.activeEnvironment.background,
-              ...(persistedState.activeEnvironment?.background || {}),
-            },
-            effects: persistedState.activeEnvironment?.effects || currentState.activeEnvironment.effects,
-            overlays: persistedState.activeEnvironment?.overlays || currentState.activeEnvironment.overlays,
-            countdownStyle: {
-              ...currentState.activeEnvironment.countdownStyle,
-              ...(persistedState.activeEnvironment?.countdownStyle || {}),
-            },
-            timelineStyle: {
-              ...currentState.activeEnvironment.timelineStyle,
-              ...(persistedState.activeEnvironment?.timelineStyle || {}),
-            },
-            plannerStyle: {
-              ...currentState.activeEnvironment.plannerStyle,
-              ...(persistedState.activeEnvironment?.plannerStyle || {}),
-            },
-            statsStyle: {
-              ...currentState.activeEnvironment.statsStyle,
-              ...(persistedState.activeEnvironment?.statsStyle || {}),
-            },
-            rankingStyle: {
-              ...currentState.activeEnvironment.rankingStyle,
-              ...(persistedState.activeEnvironment?.rankingStyle || {}),
-            },
-          },
-          savedPresets: Array.isArray(persistedState.savedPresets)
-            ? persistedState.savedPresets
-            : currentState.savedPresets,
+          activeEnvironment: normalizeEnvironment(persistedState.activeEnvironment),
+          savedPresets: [
+            ...INITIAL_PRESETS,
+            ...(Array.isArray(persistedState.savedPresets) ? persistedState.savedPresets.filter((preset: SavedPreset) => preset.isCustom).map(normalizePreset) : []),
+          ],
         };
       },
       migrate: (persistedState: any, version: number) => {
-        if (version < 5) {
+        if (version < 7) {
           // If we are migrating from an older version, ensure all new style fields exist
           const state = persistedState as ThemeState;
           if (state.activeEnvironment) {
-            state.activeEnvironment.plannerStyle = state.activeEnvironment.plannerStyle || { ...DEFAULT_WIDGET_STYLE };
-            state.activeEnvironment.statsStyle = state.activeEnvironment.statsStyle || { ...DEFAULT_WIDGET_STYLE };
-            state.activeEnvironment.rankingStyle = state.activeEnvironment.rankingStyle || { ...DEFAULT_WIDGET_STYLE };
+            state.activeEnvironment = normalizeEnvironment(state.activeEnvironment);
           }
           if (state.savedPresets) {
-            state.savedPresets = state.savedPresets.map(p => ({
-              ...p,
-              plannerStyle: p.plannerStyle || { ...DEFAULT_WIDGET_STYLE },
-              statsStyle: p.statsStyle || { ...DEFAULT_WIDGET_STYLE },
-              rankingStyle: p.rankingStyle || { ...DEFAULT_WIDGET_STYLE },
-            }));
+            state.savedPresets = state.savedPresets.map(normalizePreset);
           }
         }
         return persistedState;
