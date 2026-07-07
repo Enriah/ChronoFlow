@@ -1,4 +1,4 @@
-export type TimelineEventType = 'reminder' | 'action' | 'checklist' | 'note' | 'alert' | 'flow_step';
+export type TimelineEventType = 'reminder' | 'action' | 'checklist' | 'note' | 'alert' | 'flow_step' | 'agent';
 
 export type TimelineTrack = {
   id: string;
@@ -26,6 +26,8 @@ export type TimelineEvent = {
   absoluteStartTime?: string;
   absoluteEndTime?: string;
   actions?: string[];
+  agentProfileId?: string;
+  agentRunIds?: string[];
   checklist?: TimelineChecklistItem[];
   noteTemplate?: string;
   flowStepId?: string;

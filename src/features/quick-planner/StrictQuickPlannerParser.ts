@@ -46,6 +46,10 @@ export type StrictQuickPlanParseResult = {
   startTime?: string;
   endTime?: string;
   title?: string;
+  project?: string;
+  tags?: string[];
+  priority?: 'low' | 'medium' | 'high';
+  preset?: string;
   plannedDurationMinutes?: number;
   events: ParsedStrictTimelineEvent[];
   warnings: StrictQuickPlanWarning[];
@@ -124,6 +128,7 @@ const booleanAfter = (text: string, key: string, fallback = false) => {
   const match = text.match(new RegExp(`\\b${key}\\s+(true|false)\\b`, 'iu'));
   return match ? match[1].toLowerCase() === 'true' : fallback;
 };
+const listAfter = (text: string, key: string) => valueAfter(text, key).split('|').map((item) => item.trim()).filter(Boolean);
 
 export function parseStrictQuickPlan(input: string, actions: LinkedAction[]): StrictQuickPlanParseResult {
   const errors: StrictQuickPlanError[] = [];
@@ -148,6 +153,11 @@ export function parseStrictQuickPlan(input: string, actions: LinkedAction[]): St
     title = (remainder.match(/^"([^"]+)"/)?.[1] || remainder.match(/^'([^']+)'/)?.[1] || remainder.replace(/,$/, '').trim());
   }
   if (!title) errors.push({ id: id(), type: 'missing_schedule_name', message: 'Schedule name is required after the schedule time.' });
+  const project = valueAfter(main, 'project') || undefined;
+  const tags = listAfter(main, 'tags');
+  const preset = valueAfter(main, 'preset') || undefined;
+  const priorityValue = valueAfter(main, 'priority').toLowerCase();
+  const priority = ['low', 'medium', 'high'].includes(priorityValue) ? priorityValue as 'low' | 'medium' | 'high' : undefined;
 
   const scheduleStart = startTime ? strictTimeToMinutes(startTime) : 0;
   const scheduleEnd = endTime ? strictTimeToMinutes(endTime) : 0;
@@ -218,6 +228,7 @@ export function parseStrictQuickPlan(input: string, actions: LinkedAction[]): St
   const ok = errors.length === 0;
   return {
     ok, originalText: input, date: date || undefined, startTime: startTime || undefined, endTime: endTime || undefined, title: title || undefined,
+    project, tags, priority, preset,
     plannedDurationMinutes: startTime && endTime ? scheduleEnd - scheduleStart : undefined,
     events, warnings, errors,
     confidence: !ok ? 'low' : warnings.length ? 'medium' : 'high',

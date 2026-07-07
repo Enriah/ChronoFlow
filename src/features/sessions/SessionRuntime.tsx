@@ -25,7 +25,7 @@ export function SessionRuntime({ session, actions }: { session: WorkSession; act
   const startStepActions = async (stepId: string) => {
     startStep(stepId);
     const step = session.flowSteps.find((item) => item.id === stepId);
-    for (const id of step?.actions || []) { const action = actions.find((item) => item.id === id); if (action) await LauncherService.execute(action); }
+    for (const id of step?.actions || []) { const action = actions.find((item) => item.id === id); if (action) await LauncherService.execute(action, { source: 'session', sourceId: session.id, sourceLabel: `${session.title}: ${step?.title || 'Flow step'}` }); }
   };
 
   return <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
@@ -55,6 +55,6 @@ export function SessionRuntime({ session, actions }: { session: WorkSession; act
 export function LaunchSessionDialog({ session, actions, onClose, onStart }: { session: WorkSession; actions: LinkedAction[]; onClose: () => void; onStart: () => void }) {
   const available = actions.filter((action) => action.enabled && session.actions.includes(action.id));
   const [selected, setSelected] = useState(available.map((action) => action.id));
-  const launch = async () => { for (const id of selected) { const action = actions.find((item) => item.id === id); if (action) await LauncherService.execute(action); } onStart(); };
+  const launch = async () => { for (const id of selected) { const action = actions.find((item) => item.id === id); if (action) await LauncherService.execute(action, { source: 'session', sourceId: session.id, sourceLabel: session.title }); } onStart(); };
   return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-lg rounded-xl border border-border bg-surface p-5"><h2 className="text-xl font-black">Start {session.title}</h2><p className="mt-1 text-sm text-text-secondary">{session.plannedDurationMinutes} minutes</p><div className="mt-5 space-y-2">{available.map((action) => <label key={action.id} className="flex items-center gap-3 rounded-lg border border-border p-3"><input type="checkbox" checked={selected.includes(action.id)} onChange={() => setSelected(selected.includes(action.id) ? selected.filter((id) => id !== action.id) : [...selected, action.id])} /><span><strong className="block text-sm">{action.label}</strong><span className="font-mono text-xs text-text-secondary">{action.value}</span></span></label>)}{!available.length && <p className="text-sm text-text-secondary">No session actions</p>}</div><div className="mt-6 flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={launch}>Launch & start</Button></div></div></div>;
 }

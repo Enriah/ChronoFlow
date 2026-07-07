@@ -3,7 +3,9 @@ import type { ManagedActionInstance } from '../../models/EventTimeline';
 import type { LinkedAction } from '../../models/LinkedAction';
 import { useWorkSessionStore } from '../../core/sessions/useWorkSessionStore';
 import { useDeveloperActionStore } from '../developer-actions/useDeveloperActionStore';
+import { useAgentStore } from '../agents/useAgentStore';
 import { LauncherService } from '../../services/actions/LauncherService';
+import { AgentService, buildSessionAgentPrompt } from '../../services/agents/AgentService';
 
 const closeInfo = (action: LinkedAction): Pick<ManagedActionInstance, 'canAutoClose' | 'closeStrategy'> => {
   if (action.type === 'url') return { canAutoClose: false, closeStrategy: 'browser_unmanaged' };
@@ -14,6 +16,8 @@ const closeInfo = (action: LinkedAction): Pick<ManagedActionInstance, 'canAutoCl
 export function TimelineRuntimeController() {
   const session = useWorkSessionStore((state) => state.activeSession);
   const actions = useDeveloperActionStore((state) => state.actions);
+  const agents = useAgentStore((state) => state.profiles);
+  const recordAgentRun = useAgentStore((state) => state.recordRun);
   const updateEvent = useWorkSessionStore((state) => state.updateTimelineEvent);
   const addInstance = useWorkSessionStore((state) => state.addManagedActionInstance);
   const startStep = useWorkSessionStore((state) => state.startStep);
@@ -27,10 +31,38 @@ export function TimelineRuntimeController() {
       launching.current.add(event.id);
       void (async () => {
         const managedIds: string[] = [];
+        if (event.type === 'agent') {
+          const profile = agents.find((item) => item.id === event.agentProfileId && item.enabled);
+          const startedAt = new Date().toISOString();
+          if (!profile) {
+            updateEvent(event.id, { status: 'failed', lifecycle: { ...event.lifecycle, completedAt: new Date().toISOString() } });
+            return;
+          }
+          try {
+            const prompt = buildSessionAgentPrompt(session, event);
+            const result = await AgentService.run(profile, prompt);
+            const run = AgentService.createRun({
+              agentId: profile.id,
+              agentName: profile.name,
+              source: 'session',
+              sourceId: session.id,
+              sourceTitle: session.title,
+              eventId: event.id,
+              eventTitle: event.title,
+              prompt,
+            }, result, startedAt);
+            recordAgentRun(run);
+            const latest = useWorkSessionStore.getState().activeSession?.timelineEvents.find((item) => item.id === event.id);
+            updateEvent(event.id, { status: run.status === 'completed' ? 'completed' : 'failed', agentRunIds: [...(latest?.agentRunIds || event.agentRunIds || []), run.id], lifecycle: { ...(latest?.lifecycle || event.lifecycle), completedAt: new Date().toISOString() } });
+          } catch {
+            updateEvent(event.id, { status: 'failed', lifecycle: { ...event.lifecycle, completedAt: new Date().toISOString() } });
+          }
+          return;
+        }
         if (event.type === 'action' || event.triggerBehavior.launchActionsOnStart) {
           for (const actionId of event.actions || []) {
             const action = actions.find((item) => item.id === actionId); if (!action) continue;
-            const result = await LauncherService.execute(action); const id = crypto.randomUUID(); managedIds.push(id);
+            const result = await LauncherService.execute(action, { source: 'session', sourceId: session.id, sourceLabel: `${session.title}: ${event.title}` }); const id = crypto.randomUUID(); managedIds.push(id);
             addInstance({ id, sourceEventId: event.id, sourceSessionId: session.id, actionId: action.id, actionType: action.type, label: action.label, startedAt: new Date().toISOString(), status: result.success ? 'running' : 'failed', ...closeInfo(action), error: result.message });
           }
         }
@@ -39,7 +71,7 @@ export function TimelineRuntimeController() {
         if (event.type === 'flow_step' && event.flowStepId) startStep(event.flowStepId);
       })();
     }
-  }, [actions, addInstance, session, startStep, updateEvent]);
+  }, [actions, addInstance, agents, recordAgentRun, session, startStep, updateEvent]);
 
   useEffect(() => {
     if (!session) return;

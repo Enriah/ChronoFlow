@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
-import { Clock3, Copy, FilePlus2, Play, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, Clock3, Copy, FilePlus2, Play, Plus, Save, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useWorkSessionStore } from '../core/sessions/useWorkSessionStore';
 import { useSessionTemplateStore } from './session-templates/useSessionTemplateStore';
@@ -14,6 +14,7 @@ import { ThemeSettings } from '../components/ThemeSettings';
 import { WidgetSettings } from '../components/WidgetSettings';
 import { DataSettings } from '../components/DataSettings';
 import { AudioSettings } from '../components/AudioSettings';
+import { AgentSettings } from './agents/AgentSettings';
 import { Button } from '../components/ui/Button';
 import type { Schedule } from '../models/Schedule';
 import type { WorkSession } from '../models/WorkSession';
@@ -21,6 +22,18 @@ import type { WorkSessionTemplate } from '../models/WorkSessionTemplate';
 import { ScheduleEventTrack } from './schedule/ScheduleEventTrack';
 
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) { return <section className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}>{children}</section>; }
+function SettingsSection({ title, description, defaultOpen = false, children }: { title: string; description?: string; defaultOpen?: boolean; children: ReactNode }) {
+  return <details open={defaultOpen} className="group overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition hover:bg-surface-hover/40 [&::-webkit-details-marker]:hidden">
+      <div className="min-w-0">
+        <h3 className="font-black">{title}</h3>
+        {description && <p className="mt-1 truncate text-xs text-text-secondary">{description}</p>}
+      </div>
+      <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary transition-transform group-open:rotate-180" />
+    </summary>
+    <div className="border-t border-border/60 p-5">{children}</div>
+  </details>;
+}
 const formatDuration = (ms: number) => { const hours = Math.floor(ms / 3_600_000); const minutes = Math.floor((ms % 3_600_000) / 60_000); return hours ? `${hours}h ${minutes}m` : `${minutes}m`; };
 
 export function SchedulePage({ onEdit, onNavigate }: { onEdit: (schedule: Schedule) => void; onNavigate: (page: string) => void }) {
@@ -120,4 +133,28 @@ function ReportMetric({ label, value, icon }: { label: string; value: string; ic
 function Breakdown({ title, values }: { title: string; values: Record<string, number> }) { const max = Math.max(1, ...Object.values(values)); return <Card><h3 className="font-black">{title}</h3><div className="mt-4 space-y-3">{Object.entries(values).sort((a, b) => b[1] - a[1]).map(([key, value]) => <div key={key}><div className="flex justify-between text-sm"><span>{key}</span><span>{formatDuration(value)}</span></div><div className="mt-1 h-2 rounded bg-surface-hover"><div className="h-full rounded bg-primary" style={{ width: `${value / max * 100}%` }} /></div></div>)}{!Object.keys(values).length && <p className="text-sm text-text-secondary">No data</p>}</div></Card>; }
 
 export function ThemesPage() { return <ThemeSettings />; }
-export function SettingsPage() { return <div className="space-y-5"><Card><ActionRegistry /></Card><Card><h3 className="font-black">Timer alerts</h3><div className="mt-4"><AudioSettings /></div></Card><Card><h3 className="font-black">Widgets</h3><div className="mt-4"><WidgetSettings /></div></Card><Card><h3 className="font-black">Data / Backup</h3><div className="mt-4"><DataSettings /></div></Card></div>; }
+export function SettingsPage() {
+  return <div className="mx-auto max-w-6xl space-y-3">
+    <div className="rounded-xl border border-border bg-surface px-5 py-4 shadow-sm">
+      <h2 className="text-xl font-black">Settings</h2>
+      <p className="mt-1 text-sm text-text-secondary">Core controls are grouped into dropdown sections to keep this page compact.</p>
+    </div>
+    <SettingsSection title="Developer Actions" description="Apps, URLs, folders, files and commands available to event actions." defaultOpen>
+      <ActionRegistry />
+    </SettingsSection>
+    <SettingsSection title="AI Agents" description="CLI agents or Agent Apps triggered by timeline events." defaultOpen>
+      <AgentSettings />
+    </SettingsSection>
+    <SettingsSection title="Timer alerts" description="Master volume, notification sounds and custom audio bank.">
+      <AudioSettings />
+    </SettingsSection>
+    <div className="grid gap-3 lg:grid-cols-2">
+      <SettingsSection title="Widgets" description="Floating widget behavior and appearance.">
+        <WidgetSettings />
+      </SettingsSection>
+      <SettingsSection title="Data / Backup" description="Export or import local ChronoFlow data.">
+        <DataSettings />
+      </SettingsSection>
+    </div>
+  </div>;
+}

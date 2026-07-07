@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Bell, CheckSquare, FileText, Layers3, TriangleAlert, Workflow, Zap } from 'lucide-react';
+import { Bell, Bot, CheckSquare, FileText, Layers3, TriangleAlert, Workflow, Zap } from 'lucide-react';
 import type { TimelineEventType } from '../../models/EventTimeline';
 import { useAppStore } from '../../store/useAppStore';
 import { usePlannerStore } from '../../store/usePlannerStore';
@@ -13,20 +13,30 @@ const eventStyles: Record<TimelineEventType, string> = {
   note: 'border-amber-400/60 bg-amber-500/20 text-amber-300',
   alert: 'border-red-400/60 bg-red-500/20 text-red-300',
   flow_step: 'border-cyan-400/60 bg-cyan-500/20 text-cyan-300',
+  agent: 'border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-300',
 };
 
-const eventIcons = { reminder: Bell, action: Zap, checklist: CheckSquare, note: FileText, alert: TriangleAlert, flow_step: Workflow };
+const eventIcons: Record<TimelineEventType, typeof Bell> = { reminder: Bell, action: Zap, agent: Bot, checklist: CheckSquare, note: FileText, alert: TriangleAlert, flow_step: Workflow };
 const eventTime = (startMs: number, offsetMinutes: number) => format(new Date(startMs + offsetMinutes * 60_000), 'HH:mm');
+const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 
 export function ScheduleEventTrack({ onOpenPlanner }: { onOpenPlanner: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
   const schedules = useAppStore((state) => state.schedules);
   const tasks = usePlannerStore((state) => state.tasks);
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const timer = window.setInterval(tick, 1000);
+    tick();
+    return () => window.clearInterval(timer);
+  }, []);
+
   const blocks = useMemo(() => schedules.map((schedule) => {
     const planned = tasks.find((task) => task.id === schedule.id);
     return { schedule, tracks: planned?.timelineTracks || [], events: planned?.timelineEvents || [] };
-  }).filter((block) => block.events.length).sort((a, b) => a.schedule.startTime - b.schedule.startTime), [schedules, tasks]);
+  }).filter((block) => block.events.length && block.schedule.endTime >= now).sort((a, b) => a.schedule.startTime - b.schedule.startTime), [now, schedules, tasks]);
   const totalEvents = blocks.reduce((total, block) => total + block.events.length, 0);
-  const now = Date.now();
   const nextEvent = blocks.flatMap((block) => block.events.map((event) => ({ event, at: block.schedule.startTime + event.offsetMinutes * 60_000, scheduleTitle: block.schedule.title }))).filter((item) => item.at >= now).sort((a, b) => a.at - b.at)[0];
 
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface/90 shadow-sm">
@@ -37,13 +47,14 @@ export function ScheduleEventTrack({ onOpenPlanner }: { onOpenPlanner: () => voi
       const orderedTracks = [...tracks].sort((a, b) => a.order - b.order);
       const trackRows = orderedTracks.length ? orderedTracks : [{ id: 'events', name: 'Events', visible: true, locked: false, order: 0, createdAt: '', updatedAt: '' }];
       const running = now >= schedule.startTime && now <= schedule.endTime;
+      const currentProgress = clampPercent((now - schedule.startTime) / Math.max(1, schedule.endTime - schedule.startTime) * 100);
       return <article key={schedule.id} className={`overflow-hidden rounded-xl border ${running ? 'border-primary/50 bg-primary/[.03]' : 'border-border bg-black/10'}`}>
         <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3"><div className="min-w-0"><div className="flex items-center gap-2"><strong className="truncate">{schedule.title}</strong>{running && <span className="rounded bg-primary px-2 py-0.5 text-[9px] font-black uppercase text-primary-fg">Now</span>}</div><span className="text-xs tabular-nums text-text-secondary">{format(schedule.startTime, 'HH:mm')}–{format(schedule.endTime, 'HH:mm')} · {Math.round(durationMinutes)}m</span></div><span className="text-xs text-text-secondary">{events.length} events</span></div>
         <div className="overflow-x-auto"><div className="min-w-[680px]">
           <div className="grid h-8 grid-cols-[120px_1fr] border-b border-border/50"><div className="flex items-center border-r border-border/50 px-3 text-[9px] font-bold uppercase text-text-secondary">Tracks</div><div className="relative">{[0, .25, .5, .75, 1].map((ratio) => <span key={ratio} className="absolute inset-y-0 border-l border-border/50 pl-1 text-[9px] tabular-nums text-text-secondary" style={{ left: `${ratio * 100}%` }}>{eventTime(schedule.startTime, durationMinutes * ratio)}</span>)}</div></div>
           {trackRows.filter((track) => track.visible !== false).map((track) => {
             const rowEvents = orderedTracks.length ? events.filter((event) => event.trackId === track.id) : events;
-            return <div key={track.id} className="grid min-h-14 grid-cols-[120px_1fr] border-b border-border/40 last:border-0"><div className="flex items-center truncate border-r border-border/50 px-3 text-xs font-bold">{track.name}</div><div className="relative bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px)] bg-[length:25%_100%]">{running && <span className="absolute inset-y-0 z-10 w-px bg-primary" style={{ left: `${Math.min(100, Math.max(0, (now - schedule.startTime) / (schedule.endTime - schedule.startTime) * 100))}%` }} />}{rowEvents.map((event) => { const Icon = eventIcons[event.type]; const left = Math.min(100, event.offsetMinutes / durationMinutes * 100); const width = Math.max(3, Math.min(100 - left, (event.durationMinutes || 2) / durationMinutes * 100)); return <div key={event.id} className={`absolute top-2 flex h-10 items-center gap-1.5 overflow-hidden rounded-md border px-2 text-[10px] ${eventStyles[event.type]}`} style={{ left: `${left}%`, width: `${width}%` }} title={`${eventTime(schedule.startTime, event.offsetMinutes)} · ${event.title}`}><Icon className="h-3 w-3 shrink-0" /><span className="truncate font-bold">{event.title}</span></div>; })}</div></div>;
+            return <div key={track.id} className="grid min-h-14 grid-cols-[120px_1fr] border-b border-border/40 last:border-0"><div className="flex items-center truncate border-r border-border/50 px-3 text-xs font-bold">{track.name}</div><div className="relative bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px)] bg-[length:25%_100%]">{running && <span className="absolute inset-y-0 z-10 w-px bg-primary shadow-[0_0_12px_var(--color-primary)]" style={{ left: `${currentProgress}%`, transition: 'left 1000ms linear' }} />}{rowEvents.map((event) => { const Icon = eventIcons[event.type]; const left = Math.min(100, event.offsetMinutes / durationMinutes * 100); const width = Math.max(3, Math.min(100 - left, (event.durationMinutes || 2) / durationMinutes * 100)); return <div key={event.id} className={`absolute top-2 flex h-10 items-center gap-1.5 overflow-hidden rounded-md border px-2 text-[10px] ${eventStyles[event.type]}`} style={{ left: `${left}%`, width: `${width}%` }} title={`${eventTime(schedule.startTime, event.offsetMinutes)} · ${event.title}`}><Icon className="h-3 w-3 shrink-0" /><span className="truncate font-bold">{event.title}</span></div>; })}</div></div>;
           })}
         </div></div>
       </article>;

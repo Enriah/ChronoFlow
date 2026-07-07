@@ -22,6 +22,7 @@ export function createStrictQuickPlanTask(plan: StrictQuickPlanParseResult): Pla
   const events: TimelineEvent[] = plan.events.map((event) => toTimelineEvent(event, trackByType.get(event.type)!, plan.date!, now));
   return {
     id: crypto.randomUUID(), title: plan.title.trim(), date: plan.date, startTime: plan.startTime, endTime: plan.endTime,
+    project: plan.project, tags: plan.tags, priority: plan.priority,
     plannedDurationMinutes: plan.plannedDurationMinutes, status: 'planned', completed: false, timelineTracks: tracks, timelineEvents: events,
   };
 }

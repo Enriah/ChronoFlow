@@ -5,6 +5,7 @@ import { usePlannerStore } from './store/usePlannerStore';
 import { useWorkSessionStore } from './core/sessions/useWorkSessionStore';
 import { useSessionTemplateStore } from './features/session-templates/useSessionTemplateStore';
 import { useDeveloperActionStore } from './features/developer-actions/useDeveloperActionStore';
+import { useAgentStore } from './features/agents/useAgentStore';
 import { SyncManager } from './services/widgets/SyncManager';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownFloating } from './widgets/floating/CountdownFloating';
@@ -17,6 +18,7 @@ function App() {
   const hydrateSessions = useWorkSessionStore(state => state.hydrate);
   const hydrateTemplates = useSessionTemplateStore(state => state.hydrate);
   const hydrateActions = useDeveloperActionStore(state => state.hydrate);
+  const hydrateAgents = useAgentStore(state => state.hydrate);
   const tickSessions = useWorkSessionStore(state => state.tick);
   
   const tick = useAppStore(state => state.tick);
@@ -44,6 +46,7 @@ function App() {
       hydrateSessions();
       hydrateTemplates();
       hydrateActions();
+      hydrateAgents();
 
       setIsReady(true);
 
@@ -66,7 +69,7 @@ function App() {
     };
     
     init();
-  }, [hydrateApp, hydratePlanner, hydrateSessions, hydrateTemplates, hydrateActions]);
+  }, [hydrateApp, hydratePlanner, hydrateSessions, hydrateTemplates, hydrateActions, hydrateAgents]);
 
   useEffect(() => {
     // ALWAYS run the interval for rollover detection, even in widgets

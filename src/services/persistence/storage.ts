@@ -6,7 +6,7 @@ import type { WorkSessionTemplate } from '../../models/WorkSessionTemplate';
 import type { FlowStep } from '../../models/FlowStep';
 import type { TimelineEvent, TimelineTrack } from '../../models/EventTimeline';
 
-const timelineTypes = ['reminder', 'action', 'checklist', 'note', 'alert', 'flow_step'] as const;
+const timelineTypes = ['reminder', 'action', 'checklist', 'note', 'alert', 'flow_step', 'agent'] as const;
 
 const normalizeTimelineTrack = (track: any, order: number): TimelineTrack => {
   const now = new Date().toISOString();
@@ -29,6 +29,8 @@ const normalizeTimelineEvent = (event: any): TimelineEvent => {
     durationMinutes: Number(event?.durationMinutes) > 0 ? Number(event.durationMinutes) : undefined,
     absoluteStartTime: event?.absoluteStartTime, absoluteEndTime: event?.absoluteEndTime,
     actions: Array.isArray(event?.actions) ? event.actions : [],
+    agentProfileId: event?.agentProfileId,
+    agentRunIds: Array.isArray(event?.agentRunIds) ? event.agentRunIds : [],
     checklist: Array.isArray(event?.checklist) ? event.checklist.map((item: any) => ({ id: item.id || crypto.randomUUID(), text: item.text || '', done: !!item.done })) : [],
     noteTemplate: event?.noteTemplate, flowStepId: event?.flowStepId,
     triggerBehavior: {

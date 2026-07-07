@@ -7,7 +7,7 @@ pub fn run() {
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![command_runner::run_registered_command])
+    .invoke_handler(tauri::generate_handler![command_runner::run_registered_command, command_runner::run_agent_command, command_runner::run_agent_app])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

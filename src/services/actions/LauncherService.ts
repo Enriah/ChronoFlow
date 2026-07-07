@@ -5,7 +5,11 @@ import type { LinkedAction } from '../../models/LinkedAction';
 export type ActionExecutionLog = {
   id: string; actionId: string; label: string; type: LinkedAction['type'];
   requestedAt: string; confirmed: boolean; success: boolean; error?: string;
+  source?: 'manual' | 'schedule' | 'session';
+  sourceId?: string;
+  sourceLabel?: string;
 };
+export type ActionExecutionContext = Pick<ActionExecutionLog, 'source' | 'sourceId' | 'sourceLabel'>;
 
 const LOG_KEY = 'chronoflow_action_logs_v1';
 const log = (entry: ActionExecutionLog) => {
@@ -19,8 +23,8 @@ export const LauncherService = {
   getLogs(): ActionExecutionLog[] {
     try { const parsed = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
   },
-  async execute(action: LinkedAction): Promise<{ success: boolean; message?: string }> {
-    const base = { id: crypto.randomUUID(), actionId: action.id, label: action.label, type: action.type, requestedAt: new Date().toISOString() };
+  async execute(action: LinkedAction, context: ActionExecutionContext = {}): Promise<{ success: boolean; message?: string }> {
+    const base = { id: crypto.randomUUID(), actionId: action.id, label: action.label, type: action.type, requestedAt: new Date().toISOString(), ...context };
     if (!action.enabled || !action.value.trim()) {
       log({ ...base, confirmed: false, success: false, error: 'Action disabled or empty.' });
       return { success: false, message: 'Action disabled or empty.' };

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useDeveloperActionStore } from '../developer-actions/useDeveloperActionStore';
+import { useAgentStore } from '../agents/useAgentStore';
 import { useWorkSessionStore } from '../../core/sessions/useWorkSessionStore';
 import { LauncherService } from '../../services/actions/LauncherService';
+import { AgentService, buildScheduleAgentPrompt } from '../../services/agents/AgentService';
 import { NotificationService } from '../../services/notifications/NotificationService';
 
 type ScheduleEventRun = {
@@ -29,6 +31,8 @@ const scheduledTime = (date: string, startTime: string, offsetMinutes: number) =
 export function ScheduleTimelineController() {
   const tasks = usePlannerStore((state) => state.tasks);
   const actions = useDeveloperActionStore((state) => state.actions);
+  const agents = useAgentStore((state) => state.profiles);
+  const recordAgentRun = useAgentStore((state) => state.recordRun);
   const activeSession = useWorkSessionStore((state) => state.activeSession);
   const [now, setNow] = useState(Date.now());
   const launching = useRef(new Set<string>());
@@ -40,7 +44,8 @@ export function ScheduleTimelineController() {
       if (activeSession?.sourcePlannerTaskId === task.id) continue;
       for (const event of task.timelineEvents || []) {
         const shouldLaunch = (event.type === 'action' || event.triggerBehavior.launchActionsOnStart) && !!event.actions?.length;
-        if (!shouldLaunch) continue;
+        const shouldRunAgent = event.type === 'agent' && !!event.agentProfileId;
+        if (!shouldLaunch && !shouldRunAgent) continue;
         const at = scheduledTime(task.date, task.startTime!, event.offsetMinutes); const key = `${task.id}:${event.id}:${at}`;
         if (now < at || completed.has(key) || launching.current.has(key)) continue;
         launching.current.add(key);
@@ -51,10 +56,35 @@ export function ScheduleTimelineController() {
         void (async () => {
           void NotificationService.notify('Event started', `${task.title}: ${event.title}`);
           const errors: string[] = []; let successes = 0;
+          if (shouldRunAgent) {
+            const profile = agents.find((item) => item.id === event.agentProfileId && item.enabled);
+            if (!profile) {
+              errors.push('Agent profile is missing or disabled.');
+            } else {
+              const startedAt = new Date().toISOString();
+              try {
+                const result = await AgentService.run(profile, buildScheduleAgentPrompt(task, event));
+                const run = AgentService.createRun({
+                  agentId: profile.id,
+                  agentName: profile.name,
+                  source: 'schedule',
+                  sourceId: task.id,
+                  sourceTitle: task.title,
+                  eventId: event.id,
+                  eventTitle: event.title,
+                  prompt: buildScheduleAgentPrompt(task, event),
+                }, result, startedAt);
+                recordAgentRun(run);
+                if (run.status === 'completed') successes += 1; else errors.push(`${profile.name}: ${run.error || 'Agent failed.'}`);
+              } catch (error) {
+                errors.push(`${profile.name}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            }
+          }
           for (const actionId of event.actions || []) {
             const action = actions.find((item) => item.id === actionId);
             if (!action) { errors.push(`Action ${actionId} no longer exists.`); continue; }
-            const result = await LauncherService.execute(action);
+            const result = await LauncherService.execute(action, { source: 'schedule', sourceId: task.id, sourceLabel: `${task.title}: ${event.title}` });
             if (result.success) successes += 1; else errors.push(`${action.label}: ${result.message || 'Launch failed.'}`);
           }
           saveRun({ key, taskId: task.id, eventId: event.id, eventTitle: event.title, scheduledAt: at, executedAt: new Date().toISOString(), status: successes > 0 && !errors.length ? 'completed' : 'failed', actionIds: event.actions || [], errors: errors.length ? errors : undefined });
@@ -62,7 +92,7 @@ export function ScheduleTimelineController() {
         })();
       }
     }
-  }, [actions, activeSession?.sourcePlannerTaskId, now, tasks]);
+  }, [actions, activeSession?.sourcePlannerTaskId, agents, now, recordAgentRun, tasks]);
 
   return null;
 }
