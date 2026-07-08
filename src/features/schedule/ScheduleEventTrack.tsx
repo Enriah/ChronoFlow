@@ -4,7 +4,9 @@ import { Bell, Bot, CheckSquare, FileText, Layers3, TriangleAlert, Workflow, Zap
 import type { TimelineEventType } from '../../models/EventTimeline';
 import { useAppStore } from '../../store/useAppStore';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useThemeStore } from '../../store/useThemeStore';
 import { Button } from '../../components/ui/Button';
+import { WidgetContainer } from '../../widgets/widget-styles/WidgetContainer';
 
 const eventStyles: Record<TimelineEventType, string> = {
   reminder: 'border-sky-400/60 bg-sky-500/20 text-sky-300',
@@ -24,22 +26,34 @@ export function ScheduleEventTrack({ onOpenPlanner }: { onOpenPlanner: () => voi
   const [now, setNow] = useState(() => Date.now());
   const schedules = useAppStore((state) => state.schedules);
   const tasks = usePlannerStore((state) => state.tasks);
+  const isEditingTheme = useThemeStore((state) => state.isEditing);
+  const activeEnvironment = useThemeStore((state) => state.activeEnvironment);
+  const draftEnvironment = useThemeStore((state) => state.draftEnvironment);
+  const style = isEditingTheme ? draftEnvironment.timelineStyle : activeEnvironment.timelineStyle;
+
+  const rawBlocks = useMemo(() => schedules.map((schedule) => {
+    const planned = tasks.find((task) => task.id === schedule.id);
+    return { schedule, tracks: planned?.timelineTracks || [], events: planned?.timelineEvents || [] };
+  }).filter((block) => block.events.length), [schedules, tasks]);
+
+  const needsLiveTick = rawBlocks.some((block) => now >= block.schedule.startTime && now <= block.schedule.endTime)
+    || rawBlocks.some((block) => block.events.some((event) => {
+      const at = block.schedule.startTime + event.offsetMinutes * 60_000;
+      return at >= now && at - now <= 5 * 60_000;
+    }));
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
-    const timer = window.setInterval(tick, 1000);
+    const timer = window.setInterval(tick, needsLiveTick ? 1000 : 30_000);
     tick();
     return () => window.clearInterval(timer);
-  }, []);
+  }, [needsLiveTick]);
 
-  const blocks = useMemo(() => schedules.map((schedule) => {
-    const planned = tasks.find((task) => task.id === schedule.id);
-    return { schedule, tracks: planned?.timelineTracks || [], events: planned?.timelineEvents || [] };
-  }).filter((block) => block.events.length && block.schedule.endTime >= now).sort((a, b) => a.schedule.startTime - b.schedule.startTime), [now, schedules, tasks]);
+  const blocks = useMemo(() => rawBlocks.filter((block) => block.schedule.endTime >= now).sort((a, b) => a.schedule.startTime - b.schedule.startTime), [now, rawBlocks]);
   const totalEvents = blocks.reduce((total, block) => total + block.events.length, 0);
   const nextEvent = blocks.flatMap((block) => block.events.map((event) => ({ event, at: block.schedule.startTime + event.offsetMinutes * 60_000, scheduleTitle: block.schedule.title }))).filter((item) => item.at >= now).sort((a, b) => a.at - b.at)[0];
 
-  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface/90 shadow-sm">
+  return <WidgetContainer style={style} noPadding className="h-full min-h-0 overflow-hidden">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Layers3 className="h-5 w-5 text-primary" /><h2 className="font-black">Event Track</h2><span className="rounded bg-surface-hover px-2 py-0.5 text-[10px] text-text-secondary">{totalEvents} events</span></div><p className="mt-1 text-xs text-text-secondary">Timed events from today’s scheduled Planner blocks</p></div><Button size="sm" variant="secondary" onClick={onOpenPlanner}>Edit in Planner</Button></header>
     {nextEvent && <div className="flex items-center justify-between gap-4 border-b border-border/60 bg-primary/5 px-5 py-3 text-sm"><span className="min-w-0 truncate"><strong className="text-primary">Next · {format(new Date(nextEvent.at), 'HH:mm')}</strong><span className="ml-2 text-text-secondary">{nextEvent.scheduleTitle} / {nextEvent.event.title}</span></span><span className="shrink-0 text-xs text-text-secondary">in {Math.max(1, Math.ceil((nextEvent.at - now) / 60_000))}m</span></div>}
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">{blocks.map(({ schedule, tracks, events }) => {
@@ -59,5 +73,5 @@ export function ScheduleEventTrack({ onOpenPlanner }: { onOpenPlanner: () => voi
         </div></div>
       </article>;
     })}{!blocks.length && <div className="flex h-full min-h-72 flex-col items-center justify-center text-center"><Layers3 className="mb-3 h-8 w-8 text-text-secondary opacity-30" /><h3 className="font-bold">No events scheduled today</h3><p className="mt-1 max-w-sm text-sm text-text-secondary">Add an Event Timeline to a block in Planner. Its events will appear here automatically.</p><Button className="mt-4" size="sm" onClick={onOpenPlanner}>Open Planner</Button></div>}</div>
-  </section>;
+  </WidgetContainer>;
 }

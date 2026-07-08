@@ -1,14 +1,15 @@
-import { useEffect, useRef, type ChangeEvent } from 'react';
-import { Binary, Check, Cloud, CloudRain, Flower2, Gauge, Image, Leaf, RotateCcw, Snowflake, Sparkles, Upload, Zap } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Binary, Check, Cloud, CloudRain, Flower2, Gauge, ImageIcon, Leaf, RotateCcw, Snowflake, Sparkles, Trash2, Upload, Waves, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useThemeStore } from '../store/useThemeStore';
 import { themes } from '../themes/configs';
-import { assetManager } from '../assets-system/manager/AssetManager';
 import { Button } from './ui/Button';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import type { VisualEffectType } from '../themes/theme.types';
+import { canUseUserBackground, getSpecialEffectOwner, isEffectAllowedForTheme } from '../themes/special/registry';
+import { PersistentAssetService } from '../services/PersistentAssetService';
 
-const featuredEffects: { id: VisualEffectType; label: string; description: string; icon: typeof Sparkles }[] = [
+const featuredEffects: { id: VisualEffectType; label: string; description: string; icon: typeof Sparkles; specialThemeId?: string }[] = [
   { id: 'aurora', label: 'Aurora', description: 'Soft moving light ribbons.', icon: Sparkles },
   { id: 'rain', label: 'Rain', description: 'Falling rain across the workspace.', icon: CloudRain },
   { id: 'sakura', label: 'Sakura petals', description: 'Drifting cherry blossom petals.', icon: Flower2 },
@@ -18,28 +19,58 @@ const featuredEffects: { id: VisualEffectType; label: string; description: strin
   { id: 'electricity', label: 'Electricity', description: 'Occasional animated lightning bolts.', icon: Zap },
   { id: 'matrix', label: 'Matrix', description: 'Falling terminal characters.', icon: Binary },
   { id: 'fog', label: 'Fog', description: 'Slow moving atmospheric fog.', icon: Cloud },
+  { id: 'water_surface', label: 'Water surface', description: 'Undulating ocean cross-section waves.', icon: Waves },
+  { id: 'crimson_blossom', label: 'Crimson blossoms', description: 'Red peach blossoms drifting down.', icon: Flower2, specialThemeId: getSpecialEffectOwner('crimson_blossom') },
+  { id: 'layla_star', label: 'Layla stars', description: 'Four-point dream stars drifting down.', icon: Sparkles, specialThemeId: getSpecialEffectOwner('layla_star') },
 ];
 
+const specialThemePreviews: Record<string, string> = {
+  layla: '/themes/layla_chibi.png',
+  hutao: '/themes/hutao_chibi.png',
+};
+
 export function ThemeSettings() {
+  const backgroundInputRef = useRef<HTMLInputElement>(null);
   const {
     draftEnvironment, savedPresets, hasUnsavedChanges,
-    startEditing, stopEditing, loadPreset, updateDraftBackground,
+    startEditing, stopEditing, loadPreset,
     applyEnvironment, resetDraft, toggleDraftEffect, updateDraftEffect,
+    updateDraftBackground, clearDraftBackground,
     performanceMode, togglePerformanceMode,
   } = useThemeStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const allowUserBackground = canUseUserBackground(draftEnvironment.themeId);
+  const backgroundPreviewUrl = PersistentAssetService.getAssetUrl(draftEnvironment.background.url || '');
 
   useEffect(() => {
     startEditing();
     return stopEditing;
   }, [startEditing, stopEditing]);
 
-  const uploadBackground = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const chooseBackground = () => backgroundInputRef.current?.click();
+
+  const handleBackgroundFile = (file?: File) => {
     if (!file) return;
-    const asset = await assetManager.loadLocalAsset(file);
-    updateDraftBackground({ type: asset.type as 'image' | 'video' | 'gif', url: asset.url });
-    event.target.value = '';
+    if (!file.type.startsWith('image/')) {
+      window.alert('Please choose an image file.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      window.alert('Background image is too large. Please choose an image under 8MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      updateDraftBackground({
+        type: 'image',
+        url: reader.result,
+        opacity: 0.46,
+        blur: 0,
+        brightness: 0.78,
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   return <div className="space-y-5">
@@ -49,9 +80,14 @@ export function ThemeSettings() {
         {savedPresets.filter((preset) => !preset.isCustom).map((preset) => {
           const theme = themes.find((item) => item.id === preset.themeId);
           const selected = draftEnvironment.themeId === preset.themeId;
+          const specialPreview = specialThemePreviews[preset.themeId];
           return <button key={preset.id} onClick={() => loadPreset(preset.id)} className={clsx('rounded-xl border bg-surface-muted p-4 text-left transition', selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary')}>
-            <div className="flex items-center justify-between">
-              <span className="h-7 w-7 rounded-full border border-white/10" style={{ background: theme?.colors.primary }} />
+            <div className="flex items-start justify-between">
+              {specialPreview
+                ? <span className="flex h-12 w-12 items-end justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-inner">
+                    <img className="h-full w-full object-contain object-bottom" src={specialPreview} alt="" aria-hidden="true" />
+                  </span>
+                : <span className="h-7 w-7 rounded-full border border-white/10" style={{ background: theme?.colors.primary }} />}
               {selected && <Check className="h-4 w-4 text-primary" />}
             </div>
             <span className="mt-4 block text-sm font-black">{preset.name}</span>
@@ -59,6 +95,41 @@ export function ThemeSettings() {
         })}
       </div>
     </section>
+
+    {allowUserBackground && <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+      <input
+        ref={backgroundInputRef}
+        className="hidden"
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onChange={(event) => {
+          handleBackgroundFile(event.target.files?.[0]);
+          event.currentTarget.value = '';
+        }}
+      />
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+        <div>
+          <h3 className="font-black">Special background</h3>
+          <p className="mt-1 text-xs text-text-secondary">Only special themes can use user-selected local backgrounds. No copyrighted background is bundled with the app.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={chooseBackground}><Upload className="h-4 w-4" /> Choose image</Button>
+          <Button variant="secondary" onClick={clearDraftBackground} disabled={!draftEnvironment.background.url}><Trash2 className="h-4 w-4" /> Remove</Button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(220px,360px)_1fr]">
+        <div className="flex min-h-40 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-muted">
+          {backgroundPreviewUrl
+            ? <div className="h-40 w-full bg-cover bg-center" style={{ backgroundImage: `url("${backgroundPreviewUrl}")` }} />
+            : <div className="flex flex-col items-center gap-2 p-6 text-center text-sm text-text-secondary"><ImageIcon className="h-8 w-8 text-primary" />No background selected</div>}
+        </div>
+        <div className="grid content-start gap-4 rounded-xl border border-border bg-surface-muted p-4 md:grid-cols-3">
+          <MiniRange label="Opacity" value={draftEnvironment.background.opacity} min={0.2} max={1} step={0.05} onChange={(opacity) => updateDraftBackground({ opacity })} />
+          <MiniRange label="Brightness" value={draftEnvironment.background.brightness} min={0.35} max={1.25} step={0.05} onChange={(brightness) => updateDraftBackground({ brightness })} />
+          <MiniRange label="Blur" value={draftEnvironment.background.blur} min={0} max={12} step={1} format={(value) => `${value}px`} onChange={(blur) => updateDraftBackground({ blur })} />
+        </div>
+      </div>
+    </section>}
 
     <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -68,24 +139,12 @@ export function ThemeSettings() {
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{featuredEffects.map((meta) => {
+        if (!isEffectAllowedForTheme(draftEnvironment.themeId, meta.id)) return null;
+        if (meta.specialThemeId && draftEnvironment.themeId !== meta.specialThemeId) return null;
         const effect = draftEnvironment.effects.find((item) => item.id === meta.id);
         if (!effect) return null; const Icon = meta.icon;
         return <div key={meta.id} className="rounded-xl border border-border bg-surface-muted p-4"><ToggleSwitch checked={effect.enabled} onCheckedChange={() => toggleDraftEffect(meta.id)} label={<span className="flex items-center gap-2 font-bold"><Icon className="h-4 w-4 text-primary" />{meta.label}</span>} description={meta.description} />{effect.enabled && <div className="mt-4 grid grid-cols-2 gap-3"><MiniRange label="Intensity" value={effect.intensity} onChange={(intensity) => updateDraftEffect(meta.id, { intensity })} /><MiniRange label="Speed" value={effect.speed} onChange={(speed) => updateDraftEffect(meta.id, { speed })} /></div>}</div>;
       })}</div>
-    </section>
-
-    <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3"><h3 className="font-black">Background</h3><Image className="h-4 w-4 text-text-secondary" /></div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {(['none', 'image'] as const).map((type) => <Button key={type} variant={draftEnvironment.background.type === type ? 'primary' : 'secondary'} onClick={() => updateDraftBackground({ type })}>{type}</Button>) }
-        <Button variant="secondary" onClick={() => fileInputRef.current?.click()}><Upload className="h-4 w-4" /> Upload</Button>
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={uploadBackground} className="hidden" />
-      </div>
-      {draftEnvironment.background.type !== 'none' && <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Range label="Opacity" value={draftEnvironment.background.opacity} min={0.1} max={1} step={0.05} onChange={(opacity) => updateDraftBackground({ opacity })} />
-        <Range label="Blur" value={draftEnvironment.background.blur} min={0} max={20} step={1} onChange={(blur) => updateDraftBackground({ blur })} suffix="px" />
-        <Range label="Brightness" value={draftEnvironment.background.brightness} min={0.3} max={1.5} step={0.05} onChange={(brightness) => updateDraftBackground({ brightness })} />
-      </div>}
     </section>
 
     <div className="flex justify-end gap-2">
@@ -95,16 +154,22 @@ export function ThemeSettings() {
   </div>;
 }
 
-function MiniRange({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
-  return <label><span className="flex justify-between text-[10px] font-bold text-text-secondary"><span>{label}</span><span>{Math.round(value * 100)}%</span></span><input className="mt-2 w-full accent-primary" type="range" value={value} min={0.1} max={1} step={0.05} onChange={(event) => onChange(Number(event.target.value))} /></label>;
-}
-
-function Range({ label, value, min, max, step, suffix = '' , onChange }: {
-  label: string; value: number; min: number; max: number; step: number;
-  suffix?: string; onChange: (value: number) => void;
+function MiniRange({
+  label,
+  value,
+  onChange,
+  min = 0.1,
+  max = 1,
+  step = 0.05,
+  format = (current) => `${Math.round(current * 100)}%`,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  format?: (value: number) => string;
 }) {
-  return <label className="rounded-lg border border-border bg-surface-muted p-4">
-    <span className="flex justify-between text-sm font-bold"><span>{label}</span><span>{Math.round(value * (suffix ? 1 : 100))}{suffix || '%'}</span></span>
-    <input className="mt-3 w-full accent-primary" type="range" value={value} min={min} max={max} step={step} onChange={(event) => onChange(Number(event.target.value))} />
-  </label>;
+  return <label><span className="flex justify-between text-[10px] font-bold text-text-secondary"><span>{label}</span><span>{format(value)}</span></span><input className="mt-2 w-full accent-primary" type="range" value={value} min={min} max={max} step={step} onChange={(event) => onChange(Number(event.target.value))} /></label>;
 }

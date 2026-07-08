@@ -127,6 +127,9 @@ export class VisualEngine {
   private getRenderScale() {
     if (this.performanceMode) return .5;
     const active = this.getActiveConfigs();
+    const hasCrimsonBlossom = active.some((config) => config.id === 'crimson_blossom');
+    if (hasCrimsonBlossom && active.length >= 3) return .46;
+    if (hasCrimsonBlossom) return .54;
     const heavyCount = active.filter((config) => config.id === 'aurora' || config.id === 'fog' || config.id === 'matrix').length;
     if (active.length >= 5 || heavyCount >= 2) return .64;
     if (active.length >= 3 || heavyCount === 1) return .72;
@@ -136,7 +139,9 @@ export class VisualEngine {
   private getTargetFps(active: VisualEffectConfig[]) {
     if (this.performanceMode) return 18;
     if (!document.hasFocus()) return 12;
-    const onlySlowEffects = active.every((config) => config.id === 'aurora' || config.id === 'fog' || config.id === 'stars');
+    const hasCrimsonBlossom = active.some((config) => config.id === 'crimson_blossom');
+    if (hasCrimsonBlossom) return 32;
+    const onlySlowEffects = active.every((config) => config.id === 'aurora' || config.id === 'fog' || config.id === 'stars' || config.id === 'water_surface');
     if (onlySlowEffects) return 22;
     if (active.length >= 4) return 24;
     return 30;

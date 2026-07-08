@@ -1,4 +1,4 @@
-export type ThemeType = 'minimal' | 'neon' | 'terminal' | 'soft' | 'fantasy' | 'maple' | 'sakura' | 'galaxy' | 'custom';
+export type ThemeType = 'minimal' | 'neon' | 'terminal' | 'soft' | 'fantasy' | 'maple' | 'sakura' | 'galaxy' | 'ocean' | 'layla' | 'hutao' | 'custom';
 
 export interface ThemeColors {
   background: string;
@@ -40,6 +40,9 @@ export interface ThemeEffects {
   fogColor: string;
   auroraColor?: string;
   mapleColor?: string;
+  waterColor?: string;
+  crimsonBlossomColor?: string;
+  laylaStarColor?: string;
 }
 
 export interface ThemeConfig {
@@ -52,7 +55,7 @@ export interface ThemeConfig {
   effects: ThemeEffects;
 }
 
-export type VisualEffectType = 'aurora' | 'rain' | 'sakura' | 'maple_leaf' | 'snow' | 'electricity' | 'stars' | 'matrix' | 'fog';
+export type VisualEffectType = 'aurora' | 'rain' | 'sakura' | 'maple_leaf' | 'snow' | 'electricity' | 'stars' | 'matrix' | 'fog' | 'water_surface' | 'crimson_blossom' | 'layla_star';
 
 export interface VisualEffectConfig {
   id: VisualEffectType;

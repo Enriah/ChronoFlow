@@ -4,6 +4,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { VisualEngine } from '../core/VisualEngine';
 import { createCanvasEffects } from '../effects';
 import { adaptCustomEffectColors, createAdaptiveEffectPalette, isLightThemeBackground } from '../core/effectPalette';
+import { isEffectAllowedForTheme } from '../../themes/special/registry';
 
 export function VisualEffectsLayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,10 +15,16 @@ export function VisualEffectsLayer() {
   const performanceMode = useThemeStore((state) => state.performanceMode);
   const theme = useThemeStore((state) => state.getTheme());
   const environment = isEditing ? draftEnvironment : activeEnvironment;
-  const enabledCount = environment.effects.filter((effect) => effect.enabled).length;
+  const visibleEffects = useMemo(
+    () => environment.effects.map((effect) => !isEffectAllowedForTheme(environment.themeId, effect.id)
+      ? { ...effect, enabled: false }
+      : effect),
+    [environment.effects, environment.themeId],
+  );
+  const enabledCount = visibleEffects.filter((effect) => effect.enabled).length;
   const colorMode = isLightThemeBackground(theme.colors.background) ? 'light' : 'dark';
   const adaptivePalette = useMemo(() => createAdaptiveEffectPalette(theme.effects, theme.colors.background), [theme]);
-  const adaptiveConfigs = useMemo(() => adaptCustomEffectColors(environment.effects, theme.colors.background), [environment.effects, theme.colors.background]);
+  const adaptiveConfigs = useMemo(() => adaptCustomEffectColors(visibleEffects, theme.colors.background), [visibleEffects, theme.colors.background]);
 
   useEffect(() => {
     if (!canvasRef.current) return;

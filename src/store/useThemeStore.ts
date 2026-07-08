@@ -3,14 +3,15 @@ import { persist } from 'zustand/middleware';
 import type { 
   ThemeConfig, 
   EnvironmentConfig, 
-  BackgroundConfig, 
   VisualEffectConfig, 
   OverlayConfig,
   VisualEffectType,
-  WidgetStyle
+  WidgetStyle,
+  BackgroundConfig,
 } from '../themes/theme.types';
 import { themes, minimalTheme } from '../themes/configs';
 import { DEFAULT_WIDGET_STYLE, normalizeWidgetStyle } from '../widgets/widget-styles/widgetStyleEngine';
+import { canUseUserBackground, getSpecialThemeWidgetStyleOverride, isEffectAllowedForTheme } from '../themes/special/registry';
 
 export interface SavedPreset extends EnvironmentConfig {
   id: string;
@@ -40,9 +41,10 @@ interface ThemeState {
   // Draft Actions
   startEditing: () => void;
   stopEditing: () => void;
-  updateDraftBackground: (config: Partial<BackgroundConfig>) => void;
   updateDraftEffect: (effectId: VisualEffectType, config: Partial<VisualEffectConfig>) => void;
   toggleDraftEffect: (effectId: VisualEffectType) => void;
+  updateDraftBackground: (config: Partial<BackgroundConfig>) => void;
+  clearDraftBackground: () => void;
   updateDraftOverlay: (type: string, config: Partial<OverlayConfig>) => void;
   updateDraftCountdownStyle: (config: Partial<WidgetStyle>) => void;
   updateDraftTimelineStyle: (config: Partial<WidgetStyle>) => void;
@@ -76,6 +78,9 @@ const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
     { id: 'stars', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
     { id: 'matrix', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
     { id: 'fog', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+    { id: 'water_surface', enabled: false, intensity: 0.62, speed: 0.48, opacity: 0.72 },
+    { id: 'crimson_blossom', enabled: false, intensity: 0.58, speed: 0.44, opacity: 0.76 },
+    { id: 'layla_star', enabled: false, intensity: 0.42, speed: 0.42, opacity: 0.74 },
   ],
   overlays: [
     { type: 'scanlines', enabled: false, intensity: 0.2 },
@@ -91,6 +96,38 @@ const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
   rankingStyle: { ...DEFAULT_WIDGET_STYLE },
 };
 
+const normalizeBackground = (themeId?: string, background?: Partial<BackgroundConfig>): BackgroundConfig => {
+  if (!canUseUserBackground(themeId)) {
+    return { ...DEFAULT_ENVIRONMENT.background };
+  }
+
+  const merged = {
+    ...DEFAULT_ENVIRONMENT.background,
+    ...(background || {}),
+  };
+
+  if (merged.url?.startsWith('/themes/')) {
+    return { ...DEFAULT_ENVIRONMENT.background };
+  }
+
+  if (merged.type !== 'image' || !merged.url) {
+    return { ...DEFAULT_ENVIRONMENT.background };
+  }
+
+  return {
+    type: 'image',
+    url: merged.url,
+    opacity: merged.opacity ?? 0.48,
+    blur: Math.min(merged.blur ?? 0, 12),
+    brightness: merged.brightness ?? 0.82,
+  };
+};
+
+const normalizeThemeWidgetStyle = (themeId: string, style?: Partial<WidgetStyle>): WidgetStyle => normalizeWidgetStyle({
+  ...style,
+  ...getSpecialThemeWidgetStyleOverride(themeId),
+});
+
 const withWidgetStyles = (style: Partial<WidgetStyle>) => {
   const widgetStyle = normalizeWidgetStyle(style);
   return {
@@ -102,21 +139,26 @@ const withWidgetStyles = (style: Partial<WidgetStyle>) => {
   };
 };
 
-const normalizeEnvironment = (environment?: Partial<EnvironmentConfig>): EnvironmentConfig => ({
-  ...DEFAULT_ENVIRONMENT,
-  ...(environment || {}),
-  background: {
-    ...DEFAULT_ENVIRONMENT.background,
-    ...(environment?.background || {}),
-  },
-  effects: DEFAULT_ENVIRONMENT.effects.map((fallback) => ({ ...fallback, ...(environment?.effects?.find((effect) => effect.id === fallback.id) || {}) })),
-  overlays: environment?.overlays || DEFAULT_ENVIRONMENT.overlays,
-  countdownStyle: normalizeWidgetStyle(environment?.countdownStyle),
-  timelineStyle: normalizeWidgetStyle(environment?.timelineStyle),
-  plannerStyle: normalizeWidgetStyle(environment?.plannerStyle),
-  statsStyle: normalizeWidgetStyle(environment?.statsStyle),
-  rankingStyle: normalizeWidgetStyle(environment?.rankingStyle),
-});
+const normalizeEnvironment = (environment?: Partial<EnvironmentConfig>): EnvironmentConfig => {
+  const themeId = environment?.themeId || DEFAULT_ENVIRONMENT.themeId;
+
+  return {
+    ...DEFAULT_ENVIRONMENT,
+    ...(environment || {}),
+    themeId,
+    background: normalizeBackground(themeId, environment?.background),
+    effects: DEFAULT_ENVIRONMENT.effects.map((fallback) => {
+      const effect = { ...fallback, ...(environment?.effects?.find((item) => item.id === fallback.id) || {}) };
+      return isEffectAllowedForTheme(themeId, effect.id) ? effect : { ...effect, enabled: false };
+    }),
+    overlays: environment?.overlays || DEFAULT_ENVIRONMENT.overlays,
+    countdownStyle: normalizeThemeWidgetStyle(themeId, environment?.countdownStyle),
+    timelineStyle: normalizeThemeWidgetStyle(themeId, environment?.timelineStyle),
+    plannerStyle: normalizeThemeWidgetStyle(themeId, environment?.plannerStyle),
+    statsStyle: normalizeThemeWidgetStyle(themeId, environment?.statsStyle),
+    rankingStyle: normalizeThemeWidgetStyle(themeId, environment?.rankingStyle),
+  };
+};
 
 const normalizePreset = (preset: SavedPreset): SavedPreset => ({
   ...normalizeEnvironment(preset),
@@ -215,6 +257,28 @@ const INITIAL_PRESETS: SavedPreset[] = [
     id: 'galaxy', name: 'Deep Galaxy', themeId: 'galaxy',
     effects: DEFAULT_ENVIRONMENT.effects.map(e => ['stars', 'aurora'].includes(e.id) ? { ...e, enabled: true } : e),
   },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.84, blur: 16, borderStyle: 'halo', borderEffect: 'glow', borderRadius: 20, borderWidth: 1, borderOpacity: 0.64, glowIntensity: 0.38, shadowIntensity: 0.42, surfaceEffect: 'sheen' }),
+    id: 'ocean', name: 'Ocean Depth', themeId: 'ocean',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'water_surface' ? { ...e, enabled: true, intensity: 0.68, speed: 0.46, opacity: 0.78 } : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.58, blur: 14, borderStyle: 'halo', borderEffect: 'none', borderRadius: 22, borderWidth: 1, borderOpacity: 0.5, glowIntensity: 0.32, shadowIntensity: 0.34, surfaceEffect: 'sheen' }),
+    id: 'layla', name: 'Star Dreamland', themeId: 'layla',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'layla_star'
+      ? { ...e, enabled: true, intensity: 0.42, speed: 0.42, opacity: 0.74 }
+      : e),
+  },
+  {
+    ...DEFAULT_ENVIRONMENT,
+    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.56, blur: 18, borderStyle: 'double', borderEffect: 'none', borderRadius: 22, borderWidth: 1, borderOpacity: 0.52, glowIntensity: 0.28, shadowIntensity: 0.34, surfaceEffect: 'sheen' }),
+    id: 'hutao', name: 'Crimson Blossom', themeId: 'hutao',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'crimson_blossom'
+      ? { ...e, enabled: true, intensity: 0.34, speed: 0.48, opacity: 0.82 }
+      : e),
+  },
 ];
 
 export const useThemeStore = create<ThemeState>()(
@@ -233,7 +297,7 @@ export const useThemeStore = create<ThemeState>()(
         // Also update themeId in draft if editing
         if (get().isEditing) {
           set((state) => ({
-            draftEnvironment: { ...state.draftEnvironment, themeId: id },
+            draftEnvironment: { ...state.draftEnvironment, themeId: id, background: normalizeBackground(id, state.draftEnvironment.background) },
             hasUnsavedChanges: true
           }));
         }
@@ -252,19 +316,11 @@ export const useThemeStore = create<ThemeState>()(
 
       startEditing: () => set({ 
         isEditing: true, 
-        draftEnvironment: JSON.parse(JSON.stringify(get().activeEnvironment)),
+        draftEnvironment: JSON.parse(JSON.stringify(normalizeEnvironment(get().activeEnvironment))),
         hasUnsavedChanges: false 
       }),
 
       stopEditing: () => set({ isEditing: false, hasUnsavedChanges: false }),
-
-      updateDraftBackground: (config) => set((state) => ({
-        draftEnvironment: {
-          ...state.draftEnvironment,
-          background: { ...state.draftEnvironment.background, ...config }
-        },
-        hasUnsavedChanges: true
-      })),
 
       updateDraftEffect: (effectId, config) => set((state) => ({
         draftEnvironment: {
@@ -282,6 +338,25 @@ export const useThemeStore = create<ThemeState>()(
           effects: state.draftEnvironment.effects.map(e => 
             e.id === effectId ? { ...e, enabled: !e.enabled } : e
           )
+        },
+        hasUnsavedChanges: true
+      })),
+
+      updateDraftBackground: (config) => set((state) => ({
+        draftEnvironment: {
+          ...state.draftEnvironment,
+          background: normalizeBackground(state.draftEnvironment.themeId, {
+            ...state.draftEnvironment.background,
+            ...config,
+          }),
+        },
+        hasUnsavedChanges: true
+      })),
+
+      clearDraftBackground: () => set((state) => ({
+        draftEnvironment: {
+          ...state.draftEnvironment,
+          background: { ...DEFAULT_ENVIRONMENT.background },
         },
         hasUnsavedChanges: true
       })),
@@ -338,13 +413,13 @@ export const useThemeStore = create<ThemeState>()(
 
       applyEnvironment: () => {
         set((state) => ({
-          activeEnvironment: JSON.parse(JSON.stringify(state.draftEnvironment)),
+          activeEnvironment: JSON.parse(JSON.stringify(normalizeEnvironment(state.draftEnvironment))),
           hasUnsavedChanges: false
         }));
       },
 
       resetDraft: () => set((state) => ({
-        draftEnvironment: JSON.parse(JSON.stringify(state.activeEnvironment)),
+        draftEnvironment: JSON.parse(JSON.stringify(normalizeEnvironment(state.activeEnvironment))),
         hasUnsavedChanges: false
       })),
 
@@ -367,8 +442,9 @@ export const useThemeStore = create<ThemeState>()(
       loadPreset: (presetId: string) => {
         const preset = get().savedPresets.find(p => p.id === presetId);
         if (preset) {
+          const normalizedPreset = normalizePreset(preset);
           set({ 
-            draftEnvironment: JSON.parse(JSON.stringify(preset)),
+            draftEnvironment: JSON.parse(JSON.stringify(normalizedPreset)),
             hasUnsavedChanges: true 
           });
         }
@@ -381,14 +457,14 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'chronoflow-theme-v5', // Incremented version to v5
+      name: 'chronoflow-theme-v5',
       // Only persist active environment and custom presets
       partialize: (state) => ({
         activeEnvironment: state.activeEnvironment,
         savedPresets: state.savedPresets,
         performanceMode: state.performanceMode,
       }),
-      version: 7,
+      version: 10,
       merge: (persistedState: any, currentState: ThemeState) => {
         if (!persistedState) return currentState;
         return {
@@ -402,7 +478,7 @@ export const useThemeStore = create<ThemeState>()(
         };
       },
       migrate: (persistedState: any, version: number) => {
-        if (version < 7) {
+        if (version < 10) {
           // If we are migrating from an older version, ensure all new style fields exist
           const state = persistedState as ThemeState;
           if (state.activeEnvironment) {

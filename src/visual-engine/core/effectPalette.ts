@@ -12,6 +12,9 @@ const EFFECT_CONTRAST: Record<VisualEffectType, number> = {
   stars: 3.1,
   matrix: 3.2,
   fog: 1.35,
+  water_surface: 2.25,
+  crimson_blossom: 2.8,
+  layla_star: 2.7,
 };
 
 const clampByte = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
@@ -78,6 +81,9 @@ export function createAdaptiveEffectPalette(effects: ThemeEffects, background: s
     starsColor: adaptEffectColor(effects.starsColor, background, EFFECT_CONTRAST.stars),
     matrixColor: adaptEffectColor(effects.matrixColor, background, EFFECT_CONTRAST.matrix),
     fogColor: adaptEffectColor(effects.fogColor, background, EFFECT_CONTRAST.fog),
+    waterColor: adaptEffectColor(effects.waterColor || effects.rainColor, background, EFFECT_CONTRAST.water_surface),
+    crimsonBlossomColor: adaptEffectColor(effects.crimsonBlossomColor || effects.sakuraColor, background, EFFECT_CONTRAST.crimson_blossom),
+    laylaStarColor: adaptEffectColor(effects.laylaStarColor || effects.starsColor, background, EFFECT_CONTRAST.layla_star),
   };
 }
 
@@ -86,4 +92,3 @@ export function adaptCustomEffectColors(configs: VisualEffectConfig[], backgroun
     ? { ...config, color: adaptEffectColor(config.color, background, EFFECT_CONTRAST[config.id]) }
     : config);
 }
-
