@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, FileText, Layers3, Sparkles, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
@@ -14,6 +14,109 @@ import { parseStrictQuickPlan, strictTimeToMinutes, type ParsedStrictTimelineEve
 import { looksLikeBlockQuickPlan, parseBlockQuickPlan, type BlockQuickPlanResult } from './BlockQuickPlannerParser';
 
 const eventTypes: StrictTimelineEventType[] = ['action', 'reminder', 'checklist', 'note', 'alert'];
+type MiniLanguageSuggestion = { label: string; detail: string; insertText: string; kind: 'snippet' | 'field' | 'type' | 'action' | 'agent' | 'behavior' };
+
+const currentCompletionToken = (value: string, cursor: number) => {
+  const before = value.slice(0, cursor);
+  const lineStart = before.lastIndexOf('\n') + 1;
+  const line = before.slice(lineStart);
+  const match = line.match(/[a-zA-Z][\w.:-]*$|$/);
+  const token = match?.[0] || '';
+  return { token, replaceStart: cursor - token.length, line };
+};
+
+const indentFor = (line: string) => line.match(/^\s*/)?.[0] || '';
+
+const buildSuggestions = (date: Date, actions: ReturnType<typeof useDeveloperActionStore.getState>['actions'], agents: ReturnType<typeof useAgentStore.getState>['profiles']): MiniLanguageSuggestion[] => [
+  {
+    kind: 'snippet',
+    label: 'task block',
+    detail: 'Create a Planner task with one timeline track.',
+    insertText: [
+      `use planner create task(New Task){`,
+      `  date = ${format(date, 'd_M_yyyy')};`,
+      '  time.begin = 09_00;',
+      '  duration = 60;',
+      '  project.path = "C:/project";',
+      '  tags = "focus|coding";',
+      '  use task create track(Main){',
+      '    create event(Reminder){',
+      '      time.begin = 09_10;',
+      '      type.reminder;',
+      '      duration = 5;',
+      '      behavior.showpopup = true;',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n'),
+  },
+  {
+    kind: 'snippet',
+    label: 'session block',
+    detail: 'Create a standalone Session draft.',
+    insertText: [
+      'use session create session(New Session){',
+      `  date = ${format(date, 'd_M_yyyy')};`,
+      '  time.begin = 09_00;',
+      '  duration = 60;',
+      '  description = "";',
+      '  note = "";',
+      '}',
+    ].join('\n'),
+  },
+  {
+    kind: 'snippet',
+    label: 'agent event',
+    detail: 'Trigger an AI agent from the timeline.',
+    insertText: [
+      'create event(Agent Task){',
+      '  layer = 1;',
+      '  time.begin = 09_15;',
+      '  type.agent;',
+      `  agent = "${agents.find((agent) => agent.enabled)?.name || 'Codex CLI'}";`,
+      '  duration = 10;',
+      '  description = "Describe what the agent should do."; ',
+      '  behavior.showpopup = true;',
+      '}',
+    ].join('\n'),
+  },
+  {
+    kind: 'snippet',
+    label: 'action event',
+    detail: 'Trigger a registered action from the timeline.',
+    insertText: [
+      'create event(Open Tool){',
+      '  layer = 1;',
+      '  time.begin = 09_05;',
+      '  type.action;',
+      `  action = "${actions.find((action) => action.enabled)?.label || 'Chrome'}";`,
+      '  duration = 5;',
+      '  behavior.showpopup = true;',
+      '}',
+    ].join('\n'),
+  },
+  { kind: 'field', label: 'date', detail: 'Date in day_month_year format.', insertText: `date = ${format(date, 'd_M_yyyy')};` },
+  { kind: 'field', label: 'time.begin', detail: 'Start time in hour_minute format.', insertText: 'time.begin = 09_00;' },
+  { kind: 'field', label: 'duration', detail: 'Duration in minutes.', insertText: 'duration = 60;' },
+  { kind: 'field', label: 'project.path', detail: 'Project path or project name.', insertText: 'project.path = "C:/project";' },
+  { kind: 'field', label: 'tags', detail: 'Pipe-separated tags.', insertText: 'tags = "coding|focus";' },
+  { kind: 'field', label: 'priority', detail: 'Task priority.', insertText: 'priority = "medium";' },
+  { kind: 'field', label: 'description', detail: 'Context or prompt text.', insertText: 'description = "";' },
+  { kind: 'field', label: 'note', detail: 'Session note.', insertText: 'note = "";' },
+  { kind: 'field', label: 'layer', detail: 'Timeline layer number.', insertText: 'layer = 1;' },
+  { kind: 'type', label: 'type.agent', detail: 'Run an AI agent profile.', insertText: 'type.agent;' },
+  { kind: 'type', label: 'type.action', detail: 'Run registered actions.', insertText: 'type.action;' },
+  { kind: 'type', label: 'type.reminder', detail: 'Show a reminder event.', insertText: 'type.reminder;' },
+  { kind: 'type', label: 'type.checklist', detail: 'Checklist event.', insertText: 'type.checklist;' },
+  { kind: 'type', label: 'type.note', detail: 'Note prompt event.', insertText: 'type.note;' },
+  { kind: 'type', label: 'type.alert', detail: 'Alert event.', insertText: 'type.alert;' },
+  { kind: 'behavior', label: 'behavior.showpopup', detail: 'Show popup when event starts.', insertText: 'behavior.showpopup = true;' },
+  { kind: 'behavior', label: 'behavior.sound', detail: 'Play event sound.', insertText: 'behavior.sound = true;' },
+  { kind: 'behavior', label: 'behavior.autodismiss', detail: 'Auto-dismiss popup.', insertText: 'behavior.autodismiss = true;' },
+  ...actions.filter((action) => action.enabled).map((action): MiniLanguageSuggestion => ({ kind: 'action', label: `action: ${action.label}`, detail: `${action.type} action`, insertText: `action = "${action.label}";` })),
+  ...agents.filter((agent) => agent.enabled).map((agent): MiniLanguageSuggestion => ({ kind: 'agent', label: `agent: ${agent.name}`, detail: `${agent.mode || 'cli'} profile`, insertText: `agent = "${agent.name}";` })),
+];
+
 const sampleFor = (date: Date) => [
   `use planner create task(Fix CI Pipeline){`,
   `  date = ${format(date, 'd_M_yyyy')};`,
@@ -84,9 +187,23 @@ export function QuickPlannerModal({ date, onClose, onCreated }: { date: Date; on
   const agentProfiles = useAgentStore((state) => state.profiles);
   const addTask = usePlannerStore((state) => state.addTask);
   const createSession = useWorkSessionStore((state) => state.create);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState(() => sampleFor(date));
+  const [cursorIndex, setCursorIndex] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [plan, setPlan] = useState<StrictQuickPlanParseResult>();
   const [blockPlan, setBlockPlan] = useState<BlockQuickPlanResult>();
+  const completionContext = useMemo(() => currentCompletionToken(text, cursorIndex), [cursorIndex, text]);
+  const suggestions = useMemo(() => {
+    const token = completionContext.token.toLowerCase();
+    const all = buildSuggestions(date, actions, agentProfiles);
+    const filtered = token
+      ? all.filter((item) => `${item.label} ${item.detail}`.toLowerCase().includes(token)).slice(0, 10)
+      : all.slice(0, 8);
+    return filtered;
+  }, [actions, agentProfiles, completionContext.token, date]);
+  const updateCursor = () => setCursorIndex(textareaRef.current?.selectionStart || 0);
   const validationErrors = useMemo(() => {
     if (blockPlan) return blockPlan.issues.filter((issue) => issue.level === 'error').map((issue) => issue.message);
     if (!plan?.ok) return plan?.errors.map((error) => error.message) || [];
@@ -108,6 +225,26 @@ export function QuickPlannerModal({ date, onClose, onCreated }: { date: Date; on
     }
     setPlan(parseStrictQuickPlan(text, actions));
     setBlockPlan(undefined);
+  };
+  const insertSuggestion = (suggestion: MiniLanguageSuggestion) => {
+    const { replaceStart, line } = completionContext;
+    const cursor = textareaRef.current?.selectionStart ?? cursorIndex;
+    const prefix = text.slice(0, replaceStart);
+    const suffix = text.slice(cursor);
+    const lineIsBlank = !line.trim();
+    const needsNewlineBefore = prefix.length > 0 && !prefix.endsWith('\n') && !lineIsBlank && suggestion.kind === 'snippet';
+    const insertion = `${needsNewlineBefore ? '\n' : ''}${lineIsBlank ? indentFor(line) : ''}${suggestion.insertText}`;
+    const nextText = `${prefix}${insertion}${suffix}`;
+    const nextCursor = prefix.length + insertion.length;
+    setText(nextText);
+    setPlan(undefined);
+    setBlockPlan(undefined);
+    setShowSuggestions(true);
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+      setCursorIndex(nextCursor);
+    });
   };
   const patchPlan = (updates: Partial<StrictQuickPlanParseResult>) => setPlan((current) => {
     if (!current) return current;
@@ -170,7 +307,24 @@ export function QuickPlannerModal({ date, onClose, onCreated }: { date: Date; on
               <span className="mt-1 block opacity-60">ghost preset</span>
             </button>)}
           </div>
-          <textarea value={text} onChange={(event) => { setText(event.target.value); setPlan(undefined); setBlockPlan(undefined); }} className="mt-2 min-h-[360px] w-full resize-y rounded-xl border border-border p-4 font-mono text-sm leading-6" spellCheck={false} />
+          <textarea ref={textareaRef} value={text} onSelect={updateCursor} onKeyUp={updateCursor} onClick={updateCursor} onFocus={() => setShowSuggestions(true)} onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.code === 'Space') { event.preventDefault(); setShowSuggestions(true); return; }
+            if (!showSuggestions || !suggestions.length) return;
+            if (event.key === 'ArrowDown') { event.preventDefault(); setSelectedSuggestion((index) => Math.min(suggestions.length - 1, index + 1)); }
+            if (event.key === 'ArrowUp') { event.preventDefault(); setSelectedSuggestion((index) => Math.max(0, index - 1)); }
+            if (event.key === 'Tab') { event.preventDefault(); insertSuggestion(suggestions[selectedSuggestion] || suggestions[0]); }
+            if (event.key === 'Escape') { event.preventDefault(); setShowSuggestions(false); }
+          }} onChange={(event) => { setText(event.target.value); setCursorIndex(event.target.selectionStart); setSelectedSuggestion(0); setShowSuggestions(true); setPlan(undefined); setBlockPlan(undefined); }} className="mt-2 min-h-[360px] w-full resize-y rounded-xl border border-border p-4 font-mono text-sm leading-6" spellCheck={false} />
+          {showSuggestions && <div className="mt-2 overflow-hidden rounded-xl border border-border bg-surface-muted">
+            <div className="flex items-center justify-between border-b border-border/60 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-text-secondary"><span>IntelliSense</span><span>Tab insert · Ctrl+Space show · Esc hide</span></div>
+            <div className="max-h-56 overflow-y-auto p-2">
+              {suggestions.map((suggestion, index) => <button key={`${suggestion.kind}-${suggestion.label}`} type="button" onMouseDown={(event) => { event.preventDefault(); insertSuggestion(suggestion); }} onMouseEnter={() => setSelectedSuggestion(index)} className={`grid w-full grid-cols-[88px_minmax(0,1fr)] gap-3 rounded-lg px-3 py-2 text-left text-xs transition ${index === selectedSuggestion ? 'bg-primary/15 text-text' : 'hover:bg-surface-hover/70'}`}>
+                <span className="rounded bg-surface-hover px-2 py-1 text-center text-[9px] font-black uppercase text-primary">{suggestion.kind}</span>
+                <span className="min-w-0"><strong className="block truncate">{suggestion.label}</strong><span className="block truncate text-text-secondary">{suggestion.detail}</span></span>
+              </button>)}
+              {!suggestions.length && <p className="px-3 py-4 text-center text-xs text-text-secondary">No suggestions for “{completionContext.token}”.</p>}
+            </div>
+          </div>}
           <details className="mt-4 rounded-xl border border-border bg-surface-muted p-4 text-xs" open><summary className="cursor-pointer font-bold">Syntax reminder</summary><pre className="mt-3 whitespace-pre-wrap text-text-secondary">{'Block DSL:\nuse planner create task(Task Name){\n  date = 7_7_2026;\n  time.begin = 20_30;\n  duration = 60;\n  project.path = "C:/repo";\n  use task create track(Main){\n    create event(Event Name){\n      layer = 1;\n      time.begin = 20_35;\n      type.agent; // action, agent, checklist, note, alert\n      agent = "Codex CLI";\n      description = "Check deploy logs and summarize blockers.";\n      duration = 20;\n      behavior.showpopup = true;\n    }\n  }\n}\n\nuse session create session(Session Name){\n  date = 7_7_2026;\n  time.begin = 20_30;\n  duration = 60;\n  description = "";\n  note = "";\n}\n\nClassic text syntax is still supported.'}</pre></details>
           <div className="mt-4 flex justify-end"><Button onClick={parse}><FileText className="h-4 w-4" /> Parse</Button></div>
         </section>
@@ -195,7 +349,7 @@ export function QuickPlannerModal({ date, onClose, onCreated }: { date: Date; on
           </div>}
         </section>
       </div>
-      <footer className="flex items-center justify-between border-t border-border px-6 py-4"><span className="text-xs text-text-secondary">Local deterministic parser · no AI or external API</span><div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={create} disabled={!(plan?.ok || blockPlan?.ok) || validationErrors.length > 0}>{blockPlan ? 'Create bulk plan' : 'Create plan'}</Button></div></footer>
+      <footer className="flex items-center justify-end border-t border-border px-6 py-4"><div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={create} disabled={!(plan?.ok || blockPlan?.ok) || validationErrors.length > 0}>{blockPlan ? 'Create bulk plan' : 'Create plan'}</Button></div></footer>
     </div>
   </div>, document.body);
 }
