@@ -1,3 +1,5 @@
+import type { SpecialThemeDefinition } from '../registry';
+
 type BlossomProps = {
   x: number;
   y: number;
@@ -47,7 +49,7 @@ function Bud({ x, y, scale = 1, rotate = 0, opacity = 1 }: BudProps) {
   );
 }
 
-export function SidebarBranchOrnament() {
+export function SidebarBranchOrnament({ definition }: { definition?: SpecialThemeDefinition }) {
   return (
     <>
       <div className="sidebar-branch-ornament" aria-hidden="true">
@@ -195,7 +197,7 @@ export function SidebarBranchOrnament() {
           </g>
         </svg>
       </div>
-      <img className="hutao-sidebar-chibi" src="/themes/hutao_chibi.png" alt="" aria-hidden="true" />
+      {definition?.assets?.sidebarChibiUrl && <img className="hutao-sidebar-chibi" src={definition.assets.sidebarChibiUrl} alt="" aria-hidden="true" />}
     </>
   );
 }

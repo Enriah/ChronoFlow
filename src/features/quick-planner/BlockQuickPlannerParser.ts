@@ -217,7 +217,8 @@ function parseEvent(block: Block, taskDate: string, taskStart: string, taskDurat
   const typeValue = unquote(values.get('type')).toLowerCase();
   const type = (timelineTypes.includes(typeFlag as TimelineEventType) ? typeFlag : timelineTypes.includes(typeValue as TimelineEventType) ? typeValue : 'reminder') as TimelineEventType;
   const eventStart = normalizeTime(values.get('time.begin') || values.get('begin') || values.get('time'));
-  const duration = Math.max(1, numberValue(values.get('duration'), 5));
+  const hasDuration = values.has('duration');
+  const duration = type === 'agent' && !hasDuration ? undefined : Math.max(1, numberValue(values.get('duration'), 5));
   const actionLabel = unquote(values.get('action'));
   const action = matchAction(actionLabel, actions);
   const agentLabel = unquote(values.get('agent') || values.get('ai') || values.get('agent.profile'));
@@ -225,10 +226,13 @@ function parseEvent(block: Block, taskDate: string, taskStart: string, taskDurat
   const taskStartMinutes = timeToMinutes(taskStart);
   const eventStartMinutes = eventStart ? timeToMinutes(eventStart) : taskStartMinutes;
   const offset = eventStartMinutes - taskStartMinutes;
-  const endsAt = offset + duration;
-  if (!eventStart) issues.push(issue('error', `Event “${block.name}” needs time.begin, e.g. time.begin = 20_35;`, block.raw));
-  if (offset < 0 || endsAt > taskDuration) issues.push(issue('error', `Event “${block.name}” must stay inside the parent task duration.`, block.raw));
-  if (type === 'action' && actionLabel && !action) issues.push(issue('warning', `Action “${actionLabel}” was not found or is disabled.`, block.raw));
+  const endsAt = offset + (duration || 0);
+  if (!eventStart && type !== 'agent') issues.push(issue('error', `Event "${block.name}" needs time.begin, e.g. time.begin = 20_35;`, block.raw));
+  if ((eventStart || type !== 'agent') && (offset < 0 || endsAt > taskDuration)) issues.push(issue('error', `Event "${block.name}" must stay inside the parent task duration.`, block.raw));
+  if (type === 'action' && actionLabel && !action) issues.push(issue('warning', `Action "${actionLabel}" was not found or is disabled.`, block.raw));
+  if (type === 'agent' && agentLabel && !agent) issues.push(issue('warning', `Agent "${agentLabel}" was not found or is disabled.`, block.raw));
+  const descriptionSource = unquote(values.get('description.from') || values.get('prompt.from')).toLowerCase();
+  const onFail = unquote(values.get('on.fail') || values.get('onfail')).toLowerCase();
   const now = new Date().toISOString();
   return {
     id: id(),
@@ -238,11 +242,20 @@ function parseEvent(block: Block, taskDate: string, taskStart: string, taskDurat
     type,
     offsetMinutes: Math.max(0, offset),
     durationMinutes: duration,
-    absoluteStartTime: `${taskDate}T${minutesToTime(eventStartMinutes)}:00`,
-    absoluteEndTime: `${taskDate}T${minutesToTime(eventStartMinutes + duration)}:00`,
+    absoluteStartTime: eventStart ? `${taskDate}T${minutesToTime(eventStartMinutes)}:00` : undefined,
+    absoluteEndTime: eventStart && duration ? `${taskDate}T${minutesToTime(eventStartMinutes + duration)}:00` : undefined,
     actions: type === 'action' && action ? [action.id] : [],
     agentProfileId: type === 'agent' ? agent?.id : undefined,
     agentRunIds: [],
+    agent: type === 'agent' ? {
+      nextEventName: unquote(values.get('next') || values.get('next.event') || values.get('agent.next')) || undefined,
+      timeoutMinutes: numberValue(values.get('timeout') || values.get('agent.timeout'), 0) || undefined,
+      descriptionSource: descriptionSource === 'previous.output' || descriptionSource === 'previous_output' ? 'previous_output' : 'self',
+      descriptionAppend: unquote(values.get('description.append') || values.get('prompt.append')) || undefined,
+      requireApprovalBeforeNext: boolValue(values.get('require.approval') || values.get('agent.requireapproval'), false),
+      writeOutputPath: unquote(values.get('write.output') || values.get('output.path')) || undefined,
+      onFail: ['retry', 'fallback', 'manual'].includes(onFail) ? onFail as 'retry' | 'fallback' | 'manual' : 'stop',
+    } : undefined,
     checklist: type === 'checklist' ? listValue(values.get('checklist')).map((text) => ({ id: id(), text, done: false })) : undefined,
     noteTemplate: type === 'note' ? unquote(values.get('note')) || block.name : undefined,
     triggerBehavior: {

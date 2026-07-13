@@ -11,6 +11,23 @@ type AgentCommandResult = {
 };
 
 const clip = (value = '', max = 12_000) => value.length > max ? `${value.slice(0, max)}\n\n[truncated]` : value;
+const handoffClip = (value = '', max = 6_000) => value.length > max ? `${value.slice(0, max)}\n\n[handoff truncated]` : value;
+
+export function buildAgentHandoff(run: AgentRun) {
+  const output = run.stdout.trim() || run.stderr.trim() || run.error || 'No output was returned.';
+  return [
+    `# Agent handoff: ${run.eventTitle}`,
+    '',
+    `Agent: ${run.agentName}`,
+    `Status: ${run.status}`,
+    `Completed at: ${run.endedAt}`,
+    run.exitCode !== undefined ? `Exit code: ${run.exitCode}` : '',
+    '',
+    '## Result',
+    handoffClip(output),
+    run.error ? ['', '## Error', run.error].join('\n') : '',
+  ].filter(Boolean).join('\n');
+}
 
 export function buildScheduleAgentPrompt(task: PlannedTask, event: TimelineEvent) {
   return [
@@ -22,11 +39,13 @@ export function buildScheduleAgentPrompt(task: PlannedTask, event: TimelineEvent
     '',
     `Event: ${event.title}`,
     event.description ? `Event prompt:\n${event.description}` : 'Event prompt: No description provided.',
+    event.agent?.descriptionAppend ? `Additional agent instructions:\n${event.agent.descriptionAppend}` : '',
     '',
     'Constraints:',
     '- Stay within the project and task scope.',
     '- Do not perform destructive operations unless explicitly requested.',
-    '- Return a concise summary, files changed, commands/tests run, and blockers.',
+    '- Treat this event as the communication packet for your agent work.',
+    '- Return a concise handoff for the next event/agent: summary, files changed, commands/tests run, blockers, and recommended next step.',
   ].filter(Boolean).join('\n');
 }
 
@@ -41,16 +60,18 @@ export function buildSessionAgentPrompt(session: WorkSession, event: TimelineEve
     '',
     `Event: ${event.title}`,
     event.description ? `Event prompt:\n${event.description}` : 'Event prompt: No description provided.',
+    event.agent?.descriptionAppend ? `Additional agent instructions:\n${event.agent.descriptionAppend}` : '',
     '',
     'Constraints:',
     '- Stay within the project and session scope.',
     '- Do not perform destructive operations unless explicitly requested.',
-    '- Return a concise summary, files changed, commands/tests run, and blockers.',
+    '- Treat this event as the communication packet for your agent work.',
+    '- Return a concise handoff for the next event/agent: summary, files changed, commands/tests run, blockers, and recommended next step.',
   ].filter(Boolean).join('\n');
 }
 
 export const AgentService = {
-  async run(profile: AgentProfile, prompt: string): Promise<AgentCommandResult> {
+  async run(profile: AgentProfile, prompt: string, timeoutSeconds?: number): Promise<AgentCommandResult> {
     if ((profile.mode || 'cli') === 'app') {
       return invoke<AgentCommandResult>('run_agent_app', {
         request: {
@@ -67,7 +88,7 @@ export const AgentService = {
         args: profile.args,
         workingDirectory: profile.workingDirectory,
         prompt: clip(prompt),
-        timeoutSeconds: profile.timeoutSeconds || 900,
+        timeoutSeconds: timeoutSeconds || profile.timeoutSeconds || 900,
       },
     });
   },

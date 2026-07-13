@@ -13,7 +13,19 @@ export type TimelineTrack = {
 };
 
 export type TimelineChecklistItem = { id: string; text: string; done: boolean };
-export type TimelineEventStatus = 'pending' | 'triggered' | 'running' | 'completed' | 'dismissed' | 'skipped' | 'missed' | 'failed';
+export type TimelineEventStatus = 'pending' | 'triggered' | 'running' | 'completed' | 'dismissed' | 'skipped' | 'missed' | 'failed' | 'waiting_approval';
+export type TimelineAgentDescriptionSource = 'self' | 'previous_output';
+export type TimelineAgentFailureMode = 'stop' | 'retry' | 'fallback' | 'manual';
+
+export type TimelineAgentConfig = {
+  nextEventName?: string;
+  timeoutMinutes?: number;
+  descriptionSource?: TimelineAgentDescriptionSource;
+  descriptionAppend?: string;
+  requireApprovalBeforeNext?: boolean;
+  writeOutputPath?: string;
+  onFail?: TimelineAgentFailureMode;
+};
 
 export type TimelineEvent = {
   id: string;
@@ -28,6 +40,7 @@ export type TimelineEvent = {
   actions?: string[];
   agentProfileId?: string;
   agentRunIds?: string[];
+  agent?: TimelineAgentConfig;
   checklist?: TimelineChecklistItem[];
   noteTemplate?: string;
   flowStepId?: string;

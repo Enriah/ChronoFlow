@@ -7,6 +7,8 @@ import type { FlowStep } from '../../models/FlowStep';
 import type { TimelineEvent, TimelineTrack } from '../../models/EventTimeline';
 
 const timelineTypes = ['reminder', 'action', 'checklist', 'note', 'alert', 'flow_step', 'agent'] as const;
+const agentDescriptionSources = ['self', 'previous_output'] as const;
+const agentFailureModes = ['stop', 'retry', 'fallback', 'manual'] as const;
 
 const normalizeTimelineTrack = (track: any, order: number): TimelineTrack => {
   const now = new Date().toISOString();
@@ -21,6 +23,7 @@ const normalizeTimelineTrack = (track: any, order: number): TimelineTrack => {
 
 const normalizeTimelineEvent = (event: any): TimelineEvent => {
   const now = new Date().toISOString();
+  const agent = event?.agent || {};
   return {
     id: event?.id || crypto.randomUUID(), trackId: event?.trackId || '',
     title: event?.title || 'Untitled event', description: event?.description,
@@ -31,6 +34,15 @@ const normalizeTimelineEvent = (event: any): TimelineEvent => {
     actions: Array.isArray(event?.actions) ? event.actions : [],
     agentProfileId: event?.agentProfileId,
     agentRunIds: Array.isArray(event?.agentRunIds) ? event.agentRunIds : [],
+    agent: event?.type === 'agent' || event?.agent ? {
+      nextEventName: typeof agent?.nextEventName === 'string' ? agent.nextEventName : undefined,
+      timeoutMinutes: Number(agent?.timeoutMinutes) > 0 ? Number(agent.timeoutMinutes) : undefined,
+      descriptionSource: agentDescriptionSources.includes(agent?.descriptionSource) ? agent.descriptionSource : 'self',
+      descriptionAppend: typeof agent?.descriptionAppend === 'string' ? agent.descriptionAppend : undefined,
+      requireApprovalBeforeNext: !!agent?.requireApprovalBeforeNext,
+      writeOutputPath: typeof agent?.writeOutputPath === 'string' ? agent.writeOutputPath : undefined,
+      onFail: agentFailureModes.includes(agent?.onFail) ? agent.onFail : 'stop',
+    } : undefined,
     checklist: Array.isArray(event?.checklist) ? event.checklist.map((item: any) => ({ id: item.id || crypto.randomUUID(), text: item.text || '', done: !!item.done })) : [],
     noteTemplate: event?.noteTemplate, flowStepId: event?.flowStepId,
     triggerBehavior: {
@@ -45,7 +57,7 @@ const normalizeTimelineEvent = (event: any): TimelineEvent => {
       markCompletedOnEnd: event?.triggerBehavior?.markCompletedOnEnd !== false,
     },
     lifecycle: event?.lifecycle || {},
-    status: ['pending', 'triggered', 'running', 'completed', 'dismissed', 'skipped', 'missed', 'failed'].includes(event?.status) ? event.status : 'pending',
+    status: ['pending', 'triggered', 'running', 'completed', 'dismissed', 'skipped', 'missed', 'failed', 'waiting_approval'].includes(event?.status) ? event.status : 'pending',
     createdAt: event?.createdAt || now, updatedAt: event?.updatedAt || now,
   };
 };

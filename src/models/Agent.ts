@@ -31,4 +31,7 @@ export type AgentRun = {
   stdout: string;
   stderr: string;
   error?: string;
+  handoff?: string;
+  nextEventId?: string;
+  nextEventTitle?: string;
 };

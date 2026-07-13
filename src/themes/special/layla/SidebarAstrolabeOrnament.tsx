@@ -1,3 +1,5 @@
+import type { SpecialThemeDefinition } from '../registry';
+
 type StarProps = {
   x: number;
   y: number;
@@ -41,7 +43,7 @@ function HangingStar({ x, y1, y2, starY, starSize = 0.72, opacity = 1 }: StringP
   );
 }
 
-export function SidebarAstrolabeOrnament() {
+export function SidebarAstrolabeOrnament({ definition }: { definition?: SpecialThemeDefinition }) {
   return (
     <>
       <div className="layla-sidebar-ornament" aria-hidden="true">
@@ -104,7 +106,7 @@ export function SidebarAstrolabeOrnament() {
           </g>
         </svg>
       </div>
-      <img className="layla-sidebar-chibi" src="/themes/layla_chibi.png" alt="" aria-hidden="true" />
+      {definition?.assets?.sidebarChibiUrl && <img className="layla-sidebar-chibi" src={definition.assets.sidebarChibiUrl} alt="" aria-hidden="true" />}
     </>
   );
 }

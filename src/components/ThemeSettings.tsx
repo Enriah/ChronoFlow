@@ -6,7 +6,7 @@ import { themes } from '../themes/configs';
 import { Button } from './ui/Button';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import type { VisualEffectType } from '../themes/theme.types';
-import { canUseUserBackground, getSpecialEffectOwner, isEffectAllowedForTheme } from '../themes/special/registry';
+import { canUseUserBackground, getSpecialEffectOwner, isEffectAllowedForTheme, getSpecialThemeDefinition } from '../themes/special/registry';
 import { PersistentAssetService } from '../services/PersistentAssetService';
 
 const featuredEffects: { id: VisualEffectType; label: string; description: string; icon: typeof Sparkles; specialThemeId?: string }[] = [
@@ -24,11 +24,6 @@ const featuredEffects: { id: VisualEffectType; label: string; description: strin
   { id: 'layla_star', label: 'Layla stars', description: 'Four-point dream stars drifting down.', icon: Sparkles, specialThemeId: getSpecialEffectOwner('layla_star') },
 ];
 
-const specialThemePreviews: Record<string, string> = {
-  layla: '/themes/layla_chibi.png',
-  hutao: '/themes/hutao_chibi.png',
-};
-
 export function ThemeSettings() {
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -40,6 +35,14 @@ export function ThemeSettings() {
   } = useThemeStore();
   const allowUserBackground = canUseUserBackground(draftEnvironment.themeId);
   const backgroundPreviewUrl = PersistentAssetService.getAssetUrl(draftEnvironment.background.url || '');
+  const presetCards = savedPresets.filter((preset) => !preset.isCustom).map((preset) => {
+    const specialDef = getSpecialThemeDefinition(preset.themeId);
+    return {
+      ...preset,
+      previewImageUrl: specialDef?.assets?.sidebarChibiUrl,
+      isDownloadedSpecial: false,
+    };
+  });
 
   useEffect(() => {
     startEditing();
@@ -77,10 +80,10 @@ export function ThemeSettings() {
     <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <h3 className="font-black">Theme preset</h3>
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-        {savedPresets.filter((preset) => !preset.isCustom).map((preset) => {
+        {presetCards.map((preset) => {
           const theme = themes.find((item) => item.id === preset.themeId);
           const selected = draftEnvironment.themeId === preset.themeId;
-          const specialPreview = specialThemePreviews[preset.themeId];
+          const specialPreview = preset.previewImageUrl;
           return <button key={preset.id} onClick={() => loadPreset(preset.id)} className={clsx('rounded-xl border bg-surface-muted p-4 text-left transition', selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary')}>
             <div className="flex items-start justify-between">
               {specialPreview

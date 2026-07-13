@@ -11,7 +11,15 @@ import type {
 } from '../themes/theme.types';
 import { themes, minimalTheme } from '../themes/configs';
 import { DEFAULT_WIDGET_STYLE, normalizeWidgetStyle } from '../widgets/widget-styles/widgetStyleEngine';
-import { canUseUserBackground, getSpecialThemeWidgetStyleOverride, isEffectAllowedForTheme } from '../themes/special/registry';
+import {
+  canUseUserBackground,
+  getSpecialThemeWidgetStyleOverride,
+  isSpecialTheme,
+  isEffectAllowedForTheme,
+  normalizeSpecialThemePackage,
+  setInstalledSpecialThemes,
+  type DownloadableSpecialTheme,
+} from '../themes/special/registry';
 
 export interface SavedPreset extends EnvironmentConfig {
   id: string;
@@ -27,6 +35,10 @@ interface ThemeState {
   
   // Presets
   savedPresets: SavedPreset[];
+  downloadedSpecialThemes: DownloadableSpecialTheme[];
+  specialThemeRegistryUrl: string;
+  isFetchingSpecialThemes: boolean;
+  specialThemeError?: string;
   
   // UI State
   isEditing: boolean;
@@ -58,7 +70,12 @@ interface ThemeState {
   savePreset: (name: string) => void;
   loadPreset: (presetId: string) => void;
   deletePreset: (presetId: string) => void;
+  setSpecialThemeRegistryUrl: (url: string) => void;
+  fetchSpecialThemes: () => Promise<void>;
+  removeDownloadedSpecialTheme: (themeId: string) => void;
 }
+
+export const DEFAULT_SPECIAL_THEME_REGISTRY_URL = 'https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/registry.json';
 
 const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
   themeId: 'minimal',
@@ -140,7 +157,8 @@ const withWidgetStyles = (style: Partial<WidgetStyle>) => {
 };
 
 const normalizeEnvironment = (environment?: Partial<EnvironmentConfig>): EnvironmentConfig => {
-  const themeId = environment?.themeId || DEFAULT_ENVIRONMENT.themeId;
+  const requestedThemeId = environment?.themeId || DEFAULT_ENVIRONMENT.themeId;
+  const themeId = themes.some((theme) => theme.id === requestedThemeId) || isSpecialTheme(requestedThemeId) ? requestedThemeId : DEFAULT_ENVIRONMENT.themeId;
 
   return {
     ...DEFAULT_ENVIRONMENT,
@@ -265,19 +283,17 @@ const INITIAL_PRESETS: SavedPreset[] = [
   },
   {
     ...DEFAULT_ENVIRONMENT,
-    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.58, blur: 14, borderStyle: 'halo', borderEffect: 'none', borderRadius: 22, borderWidth: 1, borderOpacity: 0.5, glowIntensity: 0.32, shadowIntensity: 0.34, surfaceEffect: 'sheen' }),
-    id: 'layla', name: 'Star Dreamland', themeId: 'layla',
-    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'layla_star'
-      ? { ...e, enabled: true, intensity: 0.42, speed: 0.42, opacity: 0.74 }
-      : e),
+    id: 'layla',
+    name: 'Star Dreamland',
+    themeId: 'layla',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'layla_star' ? { ...e, enabled: true, intensity: 0.42, speed: 0.42, opacity: 0.74 } : e),
   },
   {
     ...DEFAULT_ENVIRONMENT,
-    ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.56, blur: 18, borderStyle: 'double', borderEffect: 'none', borderRadius: 22, borderWidth: 1, borderOpacity: 0.52, glowIntensity: 0.28, shadowIntensity: 0.34, surfaceEffect: 'sheen' }),
-    id: 'hutao', name: 'Crimson Blossom', themeId: 'hutao',
-    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'crimson_blossom'
-      ? { ...e, enabled: true, intensity: 0.34, speed: 0.48, opacity: 0.82 }
-      : e),
+    id: 'hutao',
+    name: 'Crimson Blossom',
+    themeId: 'hutao',
+    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'crimson_blossom' ? { ...e, enabled: true, intensity: 0.34, speed: 0.48, opacity: 0.82 } : e),
   },
 ];
 
@@ -288,6 +304,9 @@ export const useThemeStore = create<ThemeState>()(
       draftEnvironment: DEFAULT_ENVIRONMENT,
       currentThemeId: 'minimal',
       savedPresets: INITIAL_PRESETS,
+      downloadedSpecialThemes: [],
+      specialThemeRegistryUrl: DEFAULT_SPECIAL_THEME_REGISTRY_URL,
+      isFetchingSpecialThemes: false,
       isEditing: false,
       hasUnsavedChanges: false,
       performanceMode: false,
@@ -311,7 +330,7 @@ export const useThemeStore = create<ThemeState>()(
         const themeId = get().isEditing 
           ? (draftEnv?.themeId || 'minimal') 
           : (activeEnv?.themeId || 'minimal');
-        return themes.find((t) => t.id === themeId) || minimalTheme;
+        return [...themes, ...get().downloadedSpecialThemes.map((item) => item.theme)].find((t) => t.id === themeId) || minimalTheme;
       },
 
       startEditing: () => set({ 
@@ -440,7 +459,8 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       loadPreset: (presetId: string) => {
-        const preset = get().savedPresets.find(p => p.id === presetId);
+        const downloadedPreset = get().downloadedSpecialThemes.find((theme) => theme.id === presetId || theme.theme.id === presetId);
+        const preset = downloadedPreset ? { ...downloadedPreset.environment, id: downloadedPreset.id, name: downloadedPreset.name } : get().savedPresets.find(p => p.id === presetId);
         if (preset) {
           const normalizedPreset = normalizePreset(preset);
           set({ 
@@ -455,6 +475,16 @@ export const useThemeStore = create<ThemeState>()(
           savedPresets: state.savedPresets.filter(p => p.id !== presetId || !p.isCustom)
         }));
       },
+
+      setSpecialThemeRegistryUrl: (url) => set({ specialThemeRegistryUrl: url.trim() || DEFAULT_SPECIAL_THEME_REGISTRY_URL }),
+
+      fetchSpecialThemes: async () => {
+        // No-op: special themes are now built-in.
+      },
+
+      removeDownloadedSpecialTheme: (_themeId) => {
+        // No-op: special themes are now built-in and cannot be removed.
+      },
     }),
     {
       name: 'chronoflow-theme-v5',
@@ -462,14 +492,22 @@ export const useThemeStore = create<ThemeState>()(
       partialize: (state) => ({
         activeEnvironment: state.activeEnvironment,
         savedPresets: state.savedPresets,
+        downloadedSpecialThemes: state.downloadedSpecialThemes,
+        specialThemeRegistryUrl: state.specialThemeRegistryUrl,
         performanceMode: state.performanceMode,
       }),
-      version: 10,
+      version: 11,
       merge: (persistedState: any, currentState: ThemeState) => {
         if (!persistedState) return currentState;
+        const downloadedSpecialThemes = (Array.isArray(persistedState.downloadedSpecialThemes) ? persistedState.downloadedSpecialThemes : [])
+          .map((theme: any) => normalizeSpecialThemePackage(theme, theme?.sourceUrl))
+          .filter(Boolean) as DownloadableSpecialTheme[];
+        setInstalledSpecialThemes(downloadedSpecialThemes);
         return {
           ...currentState,
           ...persistedState,
+          downloadedSpecialThemes,
+          specialThemeRegistryUrl: persistedState.specialThemeRegistryUrl || DEFAULT_SPECIAL_THEME_REGISTRY_URL,
           activeEnvironment: normalizeEnvironment(persistedState.activeEnvironment),
           savedPresets: [
             ...INITIAL_PRESETS,
@@ -478,9 +516,11 @@ export const useThemeStore = create<ThemeState>()(
         };
       },
       migrate: (persistedState: any, version: number) => {
-        if (version < 10) {
+        if (version < 11) {
           // If we are migrating from an older version, ensure all new style fields exist
           const state = persistedState as ThemeState;
+          state.downloadedSpecialThemes = [];
+          state.specialThemeRegistryUrl = DEFAULT_SPECIAL_THEME_REGISTRY_URL;
           if (state.activeEnvironment) {
             state.activeEnvironment = normalizeEnvironment(state.activeEnvironment);
           }

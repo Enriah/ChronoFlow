@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "themes": [
+    {
+      "id": "layla",
+      "name": "Star Dreamland",
+      "previewImageUrl": "https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/assets/layla_chibi.png",
+      "theme": {
+        "id": "layla",
+        "name": "Star Dreamland",
+        "type": "layla",
+        "colors": {
+          "background": "#06152e",
+          "surface": "#0b2142",
+          "surfaceHover": "#12305a",
+          "surfaceElevated": "#0e294f",
+          "surfaceMuted": "#071a35",
+          "primary": "#93c5fd",
+          "primaryForeground": "#061225",
+          "text": "#eef7ff",
+          "textSecondary": "#a8c7e8",
+          "border": "#315985",
+          "accent": "#c4b5fd",
+          "glow": "rgba(147, 197, 253, 0.34)"
+        },
+        "typography": {
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "titleFont": "Georgia, ui-serif, serif"
+        },
+        "ui": {
+          "radius": "20px",
+          "borderWeight": "1px",
+          "shadow": "0 18px 54px rgba(2, 8, 24, 0.58)"
+        },
+        "effects": {
+          "glow": true,
+          "scanlines": false,
+          "animations": true,
+          "rainColor": "#7fb7e8",
+          "snowColor": "#f4fbff",
+          "sakuraColor": "#c4b5fd",
+          "starsColor": "#dbeafe",
+          "matrixColor": "#93c5fd",
+          "electricityColor": "#bfdbfe",
+          "fogColor": "#102a50",
+          "auroraColor": "#818cf8",
+          "mapleColor": "#93c5fd",
+          "waterColor": "#60a5fa",
+          "laylaStarColor": "#b7d8ff"
+        }
+      },
+      "environment": {
+        "themeId": "layla",
+        "background": { "type": "none", "opacity": 1, "blur": 0, "brightness": 1 },
+        "effects": [{ "id": "layla_star", "enabled": true, "intensity": 0.42, "speed": 0.42, "opacity": 0.74 }]
+      },
+      "definition": {
+        "themeId": "layla",
+        "allowUserBackground": true,
+        "widgetStyleOverride": {
+          "backgroundType": "glass",
+          "opacity": 0.58,
+          "blur": 14,
+          "borderStyle": "halo",
+          "borderEffect": "none",
+          "borderOpacity": 0.5,
+          "glowIntensity": 0.32,
+          "shadowIntensity": 0.34,
+          "surfaceEffect": "sheen"
+        },
+        "allowedEffects": ["layla_star"],
+        "exclusiveEffects": ["layla_star"],
+        "sidebarOrnament": "layla-astrolabe",
+        "assets": {
+          "sidebarChibiUrl": "https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/assets/layla_chibi.png"
+        }
+      }
+    },
+    {
+      "id": "hutao",
+      "name": "Crimson Blossom",
+      "previewImageUrl": "https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/assets/hutao_chibi.png",
+      "theme": {
+        "id": "hutao",
+        "name": "Crimson Blossom",
+        "type": "hutao",
+        "colors": {
+          "background": "#160b0d",
+          "surface": "#241211",
+          "surfaceHover": "#351a17",
+          "surfaceElevated": "#2c1514",
+          "surfaceMuted": "#1d0e0f",
+          "primary": "#ff5a66",
+          "primaryForeground": "#220708",
+          "text": "#fff0df",
+          "textSecondary": "#d7a994",
+          "border": "#6a342b",
+          "accent": "#f6c46a",
+          "glow": "rgba(255, 90, 102, 0.36)"
+        },
+        "typography": {
+          "fontFamily": "ui-sans-serif, system-ui, sans-serif",
+          "titleFont": "Georgia, ui-serif, serif"
+        },
+        "ui": {
+          "radius": "18px",
+          "borderWeight": "1px",
+          "shadow": "0 18px 52px rgba(17, 2, 4, 0.58)"
+        },
+        "effects": {
+          "glow": true,
+          "scanlines": false,
+          "animations": true,
+          "rainColor": "#b85b56",
+          "snowColor": "#fff0df",
+          "sakuraColor": "#ff6b7b",
+          "starsColor": "#ffd89a",
+          "matrixColor": "#f6c46a",
+          "electricityColor": "#ff8a55",
+          "fogColor": "#341717",
+          "auroraColor": "#ff5a66",
+          "mapleColor": "#d44a2f",
+          "waterColor": "#ff7a66",
+          "crimsonBlossomColor": "#ff3f55"
+        }
+      },
+      "environment": {
+        "themeId": "hutao",
+        "background": { "type": "none", "opacity": 1, "blur": 0, "brightness": 1 },
+        "effects": [{ "id": "crimson_blossom", "enabled": true, "intensity": 0.34, "speed": 0.48, "opacity": 0.82 }]
+      },
+      "definition": {
+        "themeId": "hutao",
+        "allowUserBackground": true,
+        "widgetStyleOverride": {
+          "backgroundType": "glass",
+          "opacity": 0.56,
+          "blur": 18,
+          "borderStyle": "double",
+          "borderEffect": "none",
+          "borderOpacity": 0.52,
+          "glowIntensity": 0.28,
+          "shadowIntensity": 0.34,
+          "surfaceEffect": "sheen"
+        },
+        "allowedEffects": ["crimson_blossom"],
+        "exclusiveEffects": ["crimson_blossom"],
+        "sidebarOrnament": "hutao-crimson-branch",
+        "assets": {
+          "sidebarChibiUrl": "https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/assets/hutao_chibi.png"
+        }
+      }
+    }
+  ]
+}
