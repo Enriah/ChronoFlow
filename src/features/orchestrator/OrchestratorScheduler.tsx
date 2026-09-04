@@ -88,7 +88,7 @@ const applyAgentHandoff = (task: PlannedTask, event: TimelineEvent, run: AgentRu
   return { nextEvents, nextEventId, nextEventTitle };
 };
 
-export function ScheduleTimelineController() {
+export function OrchestratorScheduler() {
   const tasks = usePlannerStore((state) => state.tasks);
   const updateTask = usePlannerStore((state) => state.updateTask);
   const actions = useDeveloperActionStore((state) => state.actions);

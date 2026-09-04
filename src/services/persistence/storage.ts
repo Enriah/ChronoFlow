@@ -2,7 +2,6 @@ import type { Schedule } from '../../models/Schedule';
 import type { PlannedTask } from '../../models/PlannedTask';
 import type { TaskSession } from '../../models/TaskSession';
 import type { WorkSession } from '../../models/WorkSession';
-import type { WorkSessionTemplate } from '../../models/WorkSessionTemplate';
 import type { FlowStep } from '../../models/FlowStep';
 import type { TimelineEvent, TimelineTrack } from '../../models/EventTimeline';
 
@@ -98,7 +97,6 @@ const normalizeWorkSession = (session: any): WorkSession => {
   const legacyStatus = session?.status === 'active' ? 'running' : session?.status;
   return {
     id: session?.id || crypto.randomUUID(),
-    templateId: session?.templateId,
     sourcePlannerTaskId: session?.sourcePlannerTaskId,
     title: session?.title || session?.taskTitle || session?.taskName || 'Migrated session',
     description: session?.description,
@@ -156,8 +154,6 @@ export interface StorageService {
   loadTaskSessions(): TaskSession[];
   saveWorkSessions(sessions: WorkSession[]): void;
   loadWorkSessions(): WorkSession[];
-  saveSessionTemplates(templates: WorkSessionTemplate[]): void;
-  loadSessionTemplates(): WorkSessionTemplate[];
 }
 
 export const LocalStorageService: StorageService = {
@@ -231,21 +227,4 @@ export const LocalStorageService: StorageService = {
       return [];
     }
   },
-  saveSessionTemplates(templates) {
-    localStorage.setItem('chronoflow_session_templates_v1', JSON.stringify(templates));
-  },
-  loadSessionTemplates() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem('chronoflow_session_templates_v1') || '[]');
-      return Array.isArray(parsed) ? parsed.map((template: any) => ({
-        ...template,
-        tags: Array.isArray(template.tags) ? template.tags : [],
-        actions: Array.isArray(template.actions) ? template.actions : [],
-        flowSteps: Array.isArray(template.flowSteps) ? template.flowSteps.map(normalizeStep) : [],
-        ...normalizeTimeline(template),
-      })) : [];
-    } catch {
-      return [];
-    }
-  }
 };

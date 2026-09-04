@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { Schedule } from '../../models/Schedule';
-import { WidgetContainer } from '../widget-styles/WidgetContainer';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -20,19 +19,11 @@ export function TimelineWidget({ onEdit, compact = false }: TimelineWidgetProps)
   const schedules = useAppStore(state => state.schedules);
   const deleteSchedule = useAppStore(state => state.deleteSchedule);
   
-  const isEditing = useThemeStore(state => state.isEditing);
-  const activeEnv = useThemeStore(state => state.activeEnvironment);
-  const draftEnv = useThemeStore(state => state.draftEnvironment);
   const theme = useThemeStore(state => state.getTheme());
-  
-  const style = isEditing ? draftEnv.timelineStyle : activeEnv.timelineStyle;
   const isTerminal = theme.type === 'terminal';
 
   return (
-    <WidgetContainer 
-      style={style} 
-      className="h-full"
-    >
+    <div className="relative flex h-full flex-col rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className={`flex items-center justify-between relative z-10 ${compact ? 'mb-4' : 'mb-8'}`}>
         <h3 className={`${compact ? 'text-base' : 'text-xl'} font-black tracking-tight text-text flex items-center gap-2`}>
           <CalendarDays className="w-5 h-5 text-primary" />
@@ -108,6 +99,6 @@ export function TimelineWidget({ onEdit, compact = false }: TimelineWidgetProps)
           </div>
         )}
       </div>
-    </WidgetContainer>
+    </div>
   );
 }

@@ -3,22 +3,22 @@ import { Dashboard } from './components/Dashboard';
 import { useAppStore } from './store/useAppStore';
 import { usePlannerStore } from './store/usePlannerStore';
 import { useWorkSessionStore } from './core/sessions/useWorkSessionStore';
-import { useSessionTemplateStore } from './features/session-templates/useSessionTemplateStore';
 import { useDeveloperActionStore } from './features/developer-actions/useDeveloperActionStore';
 import { useAgentStore } from './features/agents/useAgentStore';
+import { useThemeStore } from './store/useThemeStore';
 import { SyncManager } from './services/widgets/SyncManager';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { CountdownFloating } from './widgets/floating/CountdownFloating';
 import { TimelineRuntimeController } from './features/event-timeline/TimelineRuntimeController';
-import { ScheduleTimelineController } from './features/event-timeline/ScheduleTimelineController';
+import { OrchestratorScheduler } from './features/orchestrator/OrchestratorScheduler';
 
 function App() {
   const hydrateApp = useAppStore(state => state.hydrate);
   const hydratePlanner = usePlannerStore(state => state.hydrate);
   const hydrateSessions = useWorkSessionStore(state => state.hydrate);
-  const hydrateTemplates = useSessionTemplateStore(state => state.hydrate);
   const hydrateActions = useDeveloperActionStore(state => state.hydrate);
   const hydrateAgents = useAgentStore(state => state.hydrate);
+  const hydrateSpecialThemes = useThemeStore(state => state.hydrateSpecialThemes);
   const tickSessions = useWorkSessionStore(state => state.tick);
   
   const tick = useAppStore(state => state.tick);
@@ -44,9 +44,9 @@ function App() {
       hydrateApp();
       hydratePlanner();
       hydrateSessions();
-      hydrateTemplates();
       hydrateActions();
       hydrateAgents();
+      await hydrateSpecialThemes();
 
       setIsReady(true);
 
@@ -69,7 +69,7 @@ function App() {
     };
     
     init();
-  }, [hydrateApp, hydratePlanner, hydrateSessions, hydrateTemplates, hydrateActions, hydrateAgents]);
+  }, [hydrateApp, hydratePlanner, hydrateSessions, hydrateActions, hydrateAgents, hydrateSpecialThemes]);
 
   useEffect(() => {
     // ALWAYS run the interval for rollover detection, even in widgets
@@ -91,7 +91,7 @@ function App() {
   // Render Widget UI if we are in a widget window
   if (widgetType === 'countdown') return <CountdownFloating />;
 
-  return <><TimelineRuntimeController /><ScheduleTimelineController /><Dashboard /></>;
+  return <><TimelineRuntimeController /><OrchestratorScheduler /><Dashboard /></>;
 }
 
 export default App;

@@ -1,13 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, Clock3, Copy, FilePlus2, Play, Plus, Save, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Clock3, Pause, Play, Plus, Square, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { useWorkSessionStore } from '../core/sessions/useWorkSessionStore';
-import { useSessionTemplateStore } from './session-templates/useSessionTemplateStore';
-import { useDeveloperActionStore } from './developer-actions/useDeveloperActionStore';
+import { getSessionElapsedMs, useWorkSessionStore } from '../core/sessions/useWorkSessionStore';
 import { ActionRegistry } from './developer-actions/ActionRegistry';
-import { SessionEditor, type EditorValue } from './sessions/SessionEditor';
-import { LaunchSessionDialog, SessionRuntime } from './sessions/SessionRuntime';
 import { TimelineWidget } from '../widgets/timeline/TimelineWidget';
 import { PlannerWidget } from '../widgets/planner/PlannerWidget';
 import { ThemeSettings } from '../components/ThemeSettings';
@@ -18,8 +14,8 @@ import { AgentSettings } from './agents/AgentSettings';
 import { Button } from '../components/ui/Button';
 import type { Schedule } from '../models/Schedule';
 import type { WorkSession } from '../models/WorkSession';
-import type { WorkSessionTemplate } from '../models/WorkSessionTemplate';
-import { ScheduleEventTrack } from './schedule/ScheduleEventTrack';
+import { EventTrack } from './orchestrator/EventTrack';
+export { SchedulePage } from './schedule/SchedulePage';
 
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) { return <section className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}>{children}</section>; }
 function SettingsSection({ title, description, defaultOpen = false, children }: { title: string; description?: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -36,71 +32,48 @@ function SettingsSection({ title, description, defaultOpen = false, children }: 
 }
 const formatDuration = (ms: number) => { const hours = Math.floor(ms / 3_600_000); const minutes = Math.floor((ms % 3_600_000) / 60_000); return hours ? `${hours}h ${minutes}m` : `${minutes}m`; };
 
-export function SchedulePage({ onEdit, onNavigate }: { onEdit: (schedule: Schedule) => void; onNavigate: (page: string) => void }) {
+export function OrchestratorPage({ onEdit, onNavigate }: { onEdit: (schedule: Schedule) => void; onNavigate: (page: string) => void }) {
   const schedules = useAppStore((state) => state.schedules);
   const currentTask = useAppStore((state) => state.currentTask);
   const nextTask = useAppStore((state) => state.nextTask);
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"><div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"><span><strong>{schedules.length}</strong> blocks today</span><span className="text-text-secondary">Current: <strong className="text-text">{currentTask?.title || 'None'}</strong></span><span className="text-text-secondary">Next: <strong className="text-text">{nextTask ? `${format(nextTask.startTime, 'HH:mm')} ${nextTask.title}` : 'None'}</strong></span></div><Button size="sm" onClick={() => onNavigate('planner')}>Open Planner</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"><div><h2 className="font-black">Today&apos;s Orchestrator</h2><div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"><span><strong>{schedules.length}</strong> blocks today</span><span className="text-text-secondary">Current: <strong className="text-text">{currentTask?.title || 'None'}</strong></span><span className="text-text-secondary">Next: <strong className="text-text">{nextTask ? `${format(nextTask.startTime, 'HH:mm')} ${nextTask.title}` : 'None'}</strong></span></div></div><Button size="sm" onClick={() => onNavigate('planner')}>Open Planner</Button></div>
     <div className="grid h-[calc(100vh-190px)] min-h-[620px] gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <ScheduleEventTrack onOpenPlanner={() => onNavigate('planner')} />
+      <EventTrack onOpenPlanner={() => onNavigate('planner')} />
       <div className="min-h-0"><TimelineWidget onEdit={onEdit} compact /></div>
     </div>
   </div>;
 }
 
-export function PlannerPage({ onNavigate }: { onNavigate?: (page: string) => void }) { return <div className="h-[600px] max-w-6xl"><PlannerWidget onNavigate={onNavigate} /></div>; }
+export function PlannerPage({ onNavigate }: { onNavigate?: (page: string) => void }) { return <div className="h-[calc(100vh-128px)] min-h-[640px] w-full"><PlannerWidget onNavigate={onNavigate} /></div>; }
 
-export function SessionsPage({ onNavigate }: { onNavigate: (page: string) => void }) {
+export function SessionsPage() {
   const store = useWorkSessionStore();
-  const actions = useDeveloperActionStore((state) => state.actions);
-  const templateSave = useSessionTemplateStore((state) => state.save);
-  const [editor, setEditor] = useState<WorkSession | 'new' | null>(null);
-  const [launching, setLaunching] = useState<WorkSession | null>(null);
-  useEffect(() => { const open = () => setEditor('new'); window.addEventListener('chronoflow:new-session', open); return () => window.removeEventListener('chronoflow:new-session', open); }, []);
-  const saveEditor = (value: EditorValue) => {
-    if (editor && editor !== 'new') store.update(editor.id, { title: value.title, description: value.description, project: value.project, tags: value.tags, plannedDurationMinutes: value.durationMinutes, actions: value.actions, flowSteps: value.flowSteps, notes: value.notes });
-    else store.create({ title: value.title, description: value.description, project: value.project, tags: value.tags, plannedDurationMinutes: value.durationMinutes, actions: value.actions, flowSteps: value.flowSteps, notes: value.notes });
-    setEditor(null);
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [duration, setDuration] = useState('60');
+  useEffect(() => { const open = () => setNewSessionOpen(true); window.addEventListener('chronoflow:new-session', open); return () => window.removeEventListener('chronoflow:new-session', open); }, []);
+  const create = () => {
+    if (!title.trim()) return;
+    store.create({ title, plannedDurationMinutes: Math.max(1, Number(duration) || 60) });
+    setTitle(''); setDuration('60'); setNewSessionOpen(false);
   };
-  const saveAsTemplate = (session: WorkSession) => { const now = new Date().toISOString(); templateSave({ id: crypto.randomUUID(), name: session.title, description: session.description, project: session.project, tags: session.tags, defaultDurationMinutes: session.plannedDurationMinutes, actions: session.actions, flowSteps: session.flowSteps, timelineTracks: [], timelineEvents: [], notesTemplate: session.notes, createdAt: now, updatedAt: now }); onNavigate('templates'); };
   const inactive = store.sessions.filter((session) => session.id !== store.activeSession?.id);
-  const completed = inactive.filter((session) => session.status === 'completed');
-
-  return <div className="space-y-5">
-    {store.activeSession && <SessionRuntime session={store.activeSession} actions={actions} />}
-    {!store.activeSession && <div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => onNavigate('templates')}>From template</Button><Button onClick={() => setEditor('new')}><Plus className="h-4 w-4" /> New session</Button></div>}
-    <Card><h3 className="font-black">Sessions</h3><div className="mt-4 space-y-2">{inactive.map((session) => <div key={session.id} className="grid gap-3 rounded-xl border border-border bg-surface-hover/20 p-4 lg:grid-cols-[1fr_auto] lg:items-center"><button className="text-left" onClick={() => setEditor(session)}><div className="flex flex-wrap items-center gap-2"><strong>{session.title}</strong><span className="rounded bg-surface-hover px-2 py-0.5 text-[10px] uppercase">{session.status}</span></div><p className="mt-1 text-sm text-text-secondary">{session.project || 'No project'} · {session.plannedDurationMinutes}m</p></button><div className="flex flex-wrap gap-2">{['planned', 'paused'].includes(session.status) && <Button size="sm" onClick={() => setLaunching(session)}><Play className="h-3.5 w-3.5" /> Start</Button>}<Button size="sm" variant="secondary" onClick={() => store.duplicate(session.id)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button><Button size="sm" variant="secondary" onClick={() => saveAsTemplate(session)}><Save className="h-3.5 w-3.5" /> Template</Button>{!['running', 'paused', 'overdue'].includes(session.status) && <Button size="icon" variant="danger" onClick={() => store.remove(session.id)}><Trash2 className="h-4 w-4" /></Button>}</div></div>)}{!inactive.length && <p className="text-sm text-text-secondary">No sessions yet</p>}</div></Card>
-    {!store.activeSession && completed[0] && <CompletionCard session={completed[0]} />}
-    {editor && <SessionEditor title={editor === 'new' ? 'New session' : 'Edit session'} actions={actions} initial={editor === 'new' ? undefined : { title: editor.title, description: editor.description, project: editor.project, tags: editor.tags, durationMinutes: editor.plannedDurationMinutes, actions: editor.actions, flowSteps: editor.flowSteps, notes: editor.notes }} notesLabel="Session notes" onClose={() => setEditor(null)} onSave={saveEditor} />}
-    {launching && <LaunchSessionDialog session={launching} actions={actions} onClose={() => setLaunching(null)} onStart={() => { store.start(launching.id); setLaunching(null); }} />}
+  return <div className="mx-auto max-w-3xl space-y-5">
+    {store.activeSession ? <SimpleSessionTimer session={store.activeSession} /> : <div className="flex justify-end"><Button onClick={() => setNewSessionOpen(true)}><Plus className="h-4 w-4" /> New session</Button></div>}
+    <Card><h3 className="font-black">Sessions</h3><div className="mt-4 space-y-2">{inactive.map((session) => <div key={session.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-hover/20 p-4"><div><strong className="block">{session.title}</strong><span className="text-sm text-text-secondary">{session.plannedDurationMinutes} minutes · {session.status}</span></div><div className="flex gap-2">{session.status === 'planned' && <Button size="sm" onClick={() => store.start(session.id)}><Play className="h-3.5 w-3.5" /> Start</Button>}{!['running', 'paused', 'overdue'].includes(session.status) && <Button size="icon" variant="danger" title="Delete session" onClick={() => store.remove(session.id)}><Trash2 className="h-4 w-4" /></Button>}</div></div>)}{!inactive.length && <p className="py-6 text-center text-sm text-text-secondary">No saved sessions yet.</p>}</div></Card>
+    {newSessionOpen && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"><form onSubmit={(event) => { event.preventDefault(); create(); }} className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-2xl"><h2 className="text-xl font-black">New session</h2><label className="mt-5 block"><span className="text-xs font-bold">Name</span><input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} className="mt-1 w-full rounded-lg border border-border p-3" placeholder="Focus session" /></label><label className="mt-4 block"><span className="text-xs font-bold">Minutes</span><input type="number" min="1" value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1 w-full rounded-lg border border-border p-3" /></label><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setNewSessionOpen(false)}>Cancel</Button><Button type="submit">Create timer</Button></div></form></div>}
   </div>;
 }
 
-function CompletionCard({ session }: { session: WorkSession }) {
-  const actual = session.actualDurationMs || 0; const planned = session.plannedDurationMinutes * 60_000;
-  const completedSteps = session.flowSteps.filter((step) => step.status === 'completed').length;
-  return <Card><p className="text-xs font-black uppercase text-emerald-500">Session completed</p><h3 className="mt-1 text-xl font-black">{session.title}</h3><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5"><Metric label="Planned" value={formatDuration(planned)} /><Metric label="Actual" value={formatDuration(actual)} /><Metric label="Overtime" value={formatDuration(Math.max(0, actual - planned))} /><Metric label="Interruptions" value={String(session.interruptions)} /><Metric label="Steps" value={`${completedSteps}/${session.flowSteps.length}`} /></div>{session.notes && <pre className="mt-4 whitespace-pre-wrap rounded-lg bg-surface-hover/30 p-3 text-sm">{session.notes}</pre>}</Card>;
-}
-function Metric({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-text-secondary">{label}</p><strong>{value}</strong></div>; }
-
-export function TemplatesPage({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const { templates, save, duplicate, remove } = useSessionTemplateStore();
-  const actions = useDeveloperActionStore((state) => state.actions);
-  const createSession = useWorkSessionStore((state) => state.create);
-  const [editing, setEditing] = useState<WorkSessionTemplate | 'new' | null>(null);
-  useEffect(() => { const open = () => setEditing('new'); window.addEventListener('chronoflow:new-template', open); return () => window.removeEventListener('chronoflow:new-template', open); }, []);
-  const saveEditor = (value: EditorValue) => { const now = new Date().toISOString(); const previous = editing !== 'new' ? editing : null; save({ id: previous?.id || crypto.randomUUID(), name: value.title, description: value.description, project: value.project, tags: value.tags, defaultDurationMinutes: value.durationMinutes, actions: value.actions, flowSteps: value.flowSteps, timelineTracks: [], timelineEvents: [], notesTemplate: value.notes, createdAt: previous?.createdAt || now, updatedAt: now }); setEditing(null); };
-  const createFromTemplate = (template: WorkSessionTemplate) => { createSession({ templateId: template.id, title: template.name, description: template.description, project: template.project, tags: template.tags, plannedDurationMinutes: template.defaultDurationMinutes, actions: template.actions, flowSteps: template.flowSteps, notes: template.notesTemplate }); onNavigate('sessions'); };
-  return <div>
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-surface p-5"><div><h2 className="text-xl font-black">Session Templates</h2><p className="mt-1 max-w-2xl text-sm text-text-secondary">Reusable starting setups for manual Sessions: duration, actions, flow steps and notes. They do not create Planner blocks or calendar schedules.</p></div><Button onClick={() => setEditing('new')}><FilePlus2 className="h-4 w-4" /> New session template</Button></div>
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{templates.map((template) => <Card key={template.id}>
-      <h3 className="text-lg font-black">{template.name}</h3>
-      <p className="mt-1 text-sm text-text-secondary">{template.project || 'No project'} · {template.defaultDurationMinutes}m · {template.flowSteps.length} steps</p>
-      <div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => createFromTemplate(template)}>Create Session</Button><Button variant="secondary" onClick={() => setEditing(template)}>Edit template</Button><Button size="icon" variant="secondary" title="Duplicate template" onClick={() => duplicate(template.id)}><Copy className="h-4 w-4" /></Button><Button size="icon" variant="danger" title="Delete template" onClick={() => remove(template.id)}><Trash2 className="h-4 w-4" /></Button></div>
-    </Card>)}</div>
-    {editing && <SessionEditor title={editing === 'new' ? 'New session template' : 'Edit session template'} actions={actions} initial={editing === 'new' ? undefined : { title: editing.name, description: editing.description, project: editing.project, tags: editing.tags, durationMinutes: editing.defaultDurationMinutes, actions: editing.actions, flowSteps: editing.flowSteps, notes: editing.notesTemplate }} onClose={() => setEditing(null)} onSave={saveEditor} />}
-  </div>;
+function SimpleSessionTimer({ session }: { session: WorkSession }) {
+  const { pause, resume, complete, cancel } = useWorkSessionStore();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const elapsed = getSessionElapsedMs(session, now);
+  const remaining = Math.max(0, session.plannedDurationMinutes * 60_000 - elapsed);
+  const clock = (value: number) => new Date(value).toISOString().slice(11, 19);
+  return <Card className="text-center"><p className="text-xs font-black uppercase text-primary">{session.status}</p><h2 className="mt-2 text-2xl font-black">{session.title}</h2><div className="mt-5 text-5xl font-black tabular-nums">{clock(remaining)}</div><p className="mt-2 text-sm text-text-secondary">{clock(elapsed)} elapsed of {session.plannedDurationMinutes} minutes</p><div className="mt-6 flex flex-wrap justify-center gap-2">{['running', 'overdue'].includes(session.status) && <Button onClick={pause}><Pause className="h-4 w-4" /> Pause</Button>}{session.status === 'paused' && <Button onClick={resume}><Play className="h-4 w-4" /> Resume</Button>}<Button variant="secondary" onClick={complete}><Check className="h-4 w-4" /> Complete</Button><Button variant="danger" onClick={cancel}><Square className="h-4 w-4" /> Cancel</Button></div></Card>;
 }
 
 export function ReportsPage() {
@@ -132,7 +105,6 @@ const groupTime = (sessions: WorkSession[], key: (session: WorkSession) => strin
 function ReportMetric({ label, value, icon }: { label: string; value: string; icon?: ReactNode }) { return <Card><div className="text-primary">{icon}</div><p className="mt-3 text-sm text-text-secondary">{label}</p><strong className="text-xl">{value}</strong></Card>; }
 function Breakdown({ title, values }: { title: string; values: Record<string, number> }) { const max = Math.max(1, ...Object.values(values)); return <Card><h3 className="font-black">{title}</h3><div className="mt-4 space-y-3">{Object.entries(values).sort((a, b) => b[1] - a[1]).map(([key, value]) => <div key={key}><div className="flex justify-between text-sm"><span>{key}</span><span>{formatDuration(value)}</span></div><div className="mt-1 h-2 rounded bg-surface-hover"><div className="h-full rounded bg-primary" style={{ width: `${value / max * 100}%` }} /></div></div>)}{!Object.keys(values).length && <p className="text-sm text-text-secondary">No data</p>}</div></Card>; }
 
-export function ThemesPage() { return <ThemeSettings />; }
 export function SettingsPage() {
   return <div className="mx-auto max-w-6xl space-y-3">
     <div className="rounded-xl border border-border bg-surface px-5 py-4 shadow-sm">
@@ -144,6 +116,9 @@ export function SettingsPage() {
     </SettingsSection>
     <SettingsSection title="AI Agents" description="CLI agents or Agent Apps triggered by timeline events." defaultOpen>
       <AgentSettings />
+    </SettingsSection>
+    <SettingsSection title="Themes" description="Theme presets, special backgrounds, and visual effects.">
+      <ThemeSettings />
     </SettingsSection>
     <SettingsSection title="Timer alerts" description="Master volume, notification sounds and custom audio bank.">
       <AudioSettings />

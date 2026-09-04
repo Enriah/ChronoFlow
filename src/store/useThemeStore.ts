@@ -13,6 +13,7 @@ import { themes, minimalTheme } from '../themes/configs';
 import { DEFAULT_WIDGET_STYLE, normalizeWidgetStyle } from '../widgets/widget-styles/widgetStyleEngine';
 import {
   canUseUserBackground,
+  getSpecialThemeDefinition,
   getSpecialThemeWidgetStyleOverride,
   isSpecialTheme,
   isEffectAllowedForTheme,
@@ -20,6 +21,7 @@ import {
   setInstalledSpecialThemes,
   type DownloadableSpecialTheme,
 } from '../themes/special/registry';
+import { SpecialThemeAddonService } from '../themes/special/SpecialThemeAddonService';
 
 export interface SavedPreset extends EnvironmentConfig {
   id: string;
@@ -71,11 +73,38 @@ interface ThemeState {
   loadPreset: (presetId: string) => void;
   deletePreset: (presetId: string) => void;
   setSpecialThemeRegistryUrl: (url: string) => void;
+  hydrateSpecialThemes: () => Promise<void>;
   fetchSpecialThemes: () => Promise<void>;
-  removeDownloadedSpecialTheme: (themeId: string) => void;
+  removeDownloadedSpecialTheme: (themeId: string) => Promise<void>;
 }
 
 export const DEFAULT_SPECIAL_THEME_REGISTRY_URL = 'https://raw.githubusercontent.com/Enriah/ChronoFlow/main/special-themes/registry.json';
+
+const STANDARD_EFFECTS: VisualEffectConfig[] = [
+  { id: 'aurora', enabled: false, intensity: 0.55, speed: 0.35, opacity: 0.45 },
+  { id: 'rain', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'sakura', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'maple_leaf', enabled: false, intensity: 0.5, speed: 0.4, opacity: 0.65 },
+  { id: 'snow', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'electricity', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'stars', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'matrix', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'fog', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
+  { id: 'water_surface', enabled: false, intensity: 0.62, speed: 0.48, opacity: 0.72 },
+];
+
+const ADDON_EFFECT_DEFAULTS: Partial<Record<VisualEffectType, VisualEffectConfig>> = {
+  crimson_blossom: { id: 'crimson_blossom', enabled: false, intensity: 0.58, speed: 0.44, opacity: 0.76 },
+  layla_star: { id: 'layla_star', enabled: false, intensity: 0.42, speed: 0.42, opacity: 0.74 },
+};
+
+const effectDefaultsForTheme = (themeId: string): VisualEffectConfig[] => {
+  const addonEffects = getSpecialThemeDefinition(themeId)?.allowedEffects || [];
+  const addonDefaults = addonEffects
+    .map((effectId) => ADDON_EFFECT_DEFAULTS[effectId])
+    .filter(Boolean) as VisualEffectConfig[];
+  return [...STANDARD_EFFECTS, ...addonDefaults];
+};
 
 const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
   themeId: 'minimal',
@@ -85,20 +114,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentConfig = {
     blur: 0,
     brightness: 1,
   },
-  effects: [
-    { id: 'aurora', enabled: false, intensity: 0.55, speed: 0.35, opacity: 0.45 },
-    { id: 'rain', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'sakura', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'maple_leaf', enabled: false, intensity: 0.5, speed: 0.4, opacity: 0.65 },
-    { id: 'snow', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'electricity', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'stars', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'matrix', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'fog', enabled: false, intensity: 0.5, speed: 0.5, opacity: 0.5 },
-    { id: 'water_surface', enabled: false, intensity: 0.62, speed: 0.48, opacity: 0.72 },
-    { id: 'crimson_blossom', enabled: false, intensity: 0.58, speed: 0.44, opacity: 0.76 },
-    { id: 'layla_star', enabled: false, intensity: 0.42, speed: 0.42, opacity: 0.74 },
-  ],
+  effects: STANDARD_EFFECTS,
   overlays: [
     { type: 'scanlines', enabled: false, intensity: 0.2 },
     { type: 'blur', enabled: false, intensity: 5 },
@@ -165,7 +181,7 @@ const normalizeEnvironment = (environment?: Partial<EnvironmentConfig>): Environ
     ...(environment || {}),
     themeId,
     background: normalizeBackground(themeId, environment?.background),
-    effects: DEFAULT_ENVIRONMENT.effects.map((fallback) => {
+    effects: effectDefaultsForTheme(themeId).map((fallback) => {
       const effect = { ...fallback, ...(environment?.effects?.find((item) => item.id === fallback.id) || {}) };
       return isEffectAllowedForTheme(themeId, effect.id) ? effect : { ...effect, enabled: false };
     }),
@@ -280,20 +296,6 @@ const INITIAL_PRESETS: SavedPreset[] = [
     ...withWidgetStyles({ backgroundType: 'glass', opacity: 0.84, blur: 16, borderStyle: 'halo', borderEffect: 'glow', borderRadius: 20, borderWidth: 1, borderOpacity: 0.64, glowIntensity: 0.38, shadowIntensity: 0.42, surfaceEffect: 'sheen' }),
     id: 'ocean', name: 'Ocean Depth', themeId: 'ocean',
     effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'water_surface' ? { ...e, enabled: true, intensity: 0.68, speed: 0.46, opacity: 0.78 } : e),
-  },
-  {
-    ...DEFAULT_ENVIRONMENT,
-    id: 'layla',
-    name: 'Star Dreamland',
-    themeId: 'layla',
-    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'layla_star' ? { ...e, enabled: true, intensity: 0.42, speed: 0.42, opacity: 0.74 } : e),
-  },
-  {
-    ...DEFAULT_ENVIRONMENT,
-    id: 'hutao',
-    name: 'Crimson Blossom',
-    themeId: 'hutao',
-    effects: DEFAULT_ENVIRONMENT.effects.map(e => e.id === 'crimson_blossom' ? { ...e, enabled: true, intensity: 0.34, speed: 0.48, opacity: 0.82 } : e),
   },
 ];
 
@@ -478,12 +480,52 @@ export const useThemeStore = create<ThemeState>()(
 
       setSpecialThemeRegistryUrl: (url) => set({ specialThemeRegistryUrl: url.trim() || DEFAULT_SPECIAL_THEME_REGISTRY_URL }),
 
-      fetchSpecialThemes: async () => {
-        // No-op: special themes are now built-in.
+      hydrateSpecialThemes: async () => {
+        const installedThemes = await SpecialThemeAddonService.listInstalled();
+        if (!installedThemes.length) {
+          setInstalledSpecialThemes(get().downloadedSpecialThemes);
+          return;
+        }
+
+        setInstalledSpecialThemes(installedThemes);
+        set((state) => ({
+          downloadedSpecialThemes: installedThemes,
+          activeEnvironment: normalizeEnvironment(state.activeEnvironment),
+          draftEnvironment: normalizeEnvironment(state.draftEnvironment),
+        }));
       },
 
-      removeDownloadedSpecialTheme: (_themeId) => {
-        // No-op: special themes are now built-in and cannot be removed.
+      fetchSpecialThemes: async () => {
+        set({ isFetchingSpecialThemes: true, specialThemeError: undefined });
+        try {
+          const response = await fetch(get().specialThemeRegistryUrl);
+          if (!response.ok) throw new Error(`Could not load the special theme catalog (${response.status}).`);
+          const registry = await response.json() as { themes?: unknown[] } | unknown[];
+          const packages = (Array.isArray(registry) ? registry : registry.themes || [])
+            .map((theme) => normalizeSpecialThemePackage(theme, get().specialThemeRegistryUrl))
+            .filter(Boolean) as DownloadableSpecialTheme[];
+          if (!packages.length) throw new Error('The special theme catalog did not contain valid add-on packages.');
+
+          const installedThemes = await Promise.all(packages.map((theme) => SpecialThemeAddonService.install(theme, get().specialThemeRegistryUrl)));
+          setInstalledSpecialThemes(installedThemes);
+          set({ downloadedSpecialThemes: installedThemes, isFetchingSpecialThemes: false, specialThemeError: undefined });
+        } catch (error) {
+          set({
+            isFetchingSpecialThemes: false,
+            specialThemeError: error instanceof Error ? error.message : 'Could not install special themes.',
+          });
+        }
+      },
+
+      removeDownloadedSpecialTheme: async (themeId) => {
+        await SpecialThemeAddonService.remove(themeId);
+        const downloadedSpecialThemes = get().downloadedSpecialThemes.filter((theme) => theme.id !== themeId && theme.theme.id !== themeId);
+        setInstalledSpecialThemes(downloadedSpecialThemes);
+        set((state) => ({
+          downloadedSpecialThemes,
+          activeEnvironment: normalizeEnvironment(state.activeEnvironment),
+          draftEnvironment: normalizeEnvironment(state.draftEnvironment),
+        }));
       },
     }),
     {

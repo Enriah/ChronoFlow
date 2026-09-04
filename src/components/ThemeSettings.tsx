@@ -6,10 +6,11 @@ import { themes } from '../themes/configs';
 import { Button } from './ui/Button';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import type { VisualEffectType } from '../themes/theme.types';
-import { canUseUserBackground, getSpecialEffectOwner, isEffectAllowedForTheme, getSpecialThemeDefinition } from '../themes/special/registry';
+import { canUseUserBackground, isEffectAllowedForTheme, isSpecialTheme } from '../themes/special/registry';
 import { PersistentAssetService } from '../services/PersistentAssetService';
+import { SpecialThemeAddons } from '../features/special-themes/SpecialThemeAddons';
 
-const featuredEffects: { id: VisualEffectType; label: string; description: string; icon: typeof Sparkles; specialThemeId?: string }[] = [
+const featuredEffects: { id: VisualEffectType; label: string; description: string; icon: typeof Sparkles }[] = [
   { id: 'aurora', label: 'Aurora', description: 'Soft moving light ribbons.', icon: Sparkles },
   { id: 'rain', label: 'Rain', description: 'Falling rain across the workspace.', icon: CloudRain },
   { id: 'sakura', label: 'Sakura petals', description: 'Drifting cherry blossom petals.', icon: Flower2 },
@@ -20,8 +21,6 @@ const featuredEffects: { id: VisualEffectType; label: string; description: strin
   { id: 'matrix', label: 'Matrix', description: 'Falling terminal characters.', icon: Binary },
   { id: 'fog', label: 'Fog', description: 'Slow moving atmospheric fog.', icon: Cloud },
   { id: 'water_surface', label: 'Water surface', description: 'Undulating ocean cross-section waves.', icon: Waves },
-  { id: 'crimson_blossom', label: 'Crimson blossoms', description: 'Red peach blossoms drifting down.', icon: Flower2, specialThemeId: getSpecialEffectOwner('crimson_blossom') },
-  { id: 'layla_star', label: 'Layla stars', description: 'Four-point dream stars drifting down.', icon: Sparkles, specialThemeId: getSpecialEffectOwner('layla_star') },
 ];
 
 export function ThemeSettings() {
@@ -35,14 +34,7 @@ export function ThemeSettings() {
   } = useThemeStore();
   const allowUserBackground = canUseUserBackground(draftEnvironment.themeId);
   const backgroundPreviewUrl = PersistentAssetService.getAssetUrl(draftEnvironment.background.url || '');
-  const presetCards = savedPresets.filter((preset) => !preset.isCustom).map((preset) => {
-    const specialDef = getSpecialThemeDefinition(preset.themeId);
-    return {
-      ...preset,
-      previewImageUrl: specialDef?.assets?.sidebarChibiUrl,
-      isDownloadedSpecial: false,
-    };
-  });
+  const presetCards = savedPresets.filter((preset) => !preset.isCustom && !isSpecialTheme(preset.themeId));
 
   useEffect(() => {
     startEditing();
@@ -78,19 +70,14 @@ export function ThemeSettings() {
 
   return <div className="space-y-5">
     <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-      <h3 className="font-black">Theme preset</h3>
+      <h3 className="font-black">Standard themes</h3>
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         {presetCards.map((preset) => {
           const theme = themes.find((item) => item.id === preset.themeId);
           const selected = draftEnvironment.themeId === preset.themeId;
-          const specialPreview = preset.previewImageUrl;
           return <button key={preset.id} onClick={() => loadPreset(preset.id)} className={clsx('rounded-xl border bg-surface-muted p-4 text-left transition', selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary')}>
             <div className="flex items-start justify-between">
-              {specialPreview
-                ? <span className="flex h-12 w-12 items-end justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-inner">
-                    <img className="h-full w-full object-contain object-bottom" src={specialPreview} alt="" aria-hidden="true" />
-                  </span>
-                : <span className="h-7 w-7 rounded-full border border-white/10" style={{ background: theme?.colors.primary }} />}
+              <span className="h-7 w-7 rounded-full border border-white/10" style={{ background: theme?.colors.primary }} />
               {selected && <Check className="h-4 w-4 text-primary" />}
             </div>
             <span className="mt-4 block text-sm font-black">{preset.name}</span>
@@ -98,6 +85,8 @@ export function ThemeSettings() {
         })}
       </div>
     </section>
+
+    <SpecialThemeAddons />
 
     {allowUserBackground && <section className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <input
@@ -143,7 +132,6 @@ export function ThemeSettings() {
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{featuredEffects.map((meta) => {
         if (!isEffectAllowedForTheme(draftEnvironment.themeId, meta.id)) return null;
-        if (meta.specialThemeId && draftEnvironment.themeId !== meta.specialThemeId) return null;
         const effect = draftEnvironment.effects.find((item) => item.id === meta.id);
         if (!effect) return null; const Icon = meta.icon;
         return <div key={meta.id} className="rounded-xl border border-border bg-surface-muted p-4"><ToggleSwitch checked={effect.enabled} onCheckedChange={() => toggleDraftEffect(meta.id)} label={<span className="flex items-center gap-2 font-bold"><Icon className="h-4 w-4 text-primary" />{meta.label}</span>} description={meta.description} />{effect.enabled && <div className="mt-4 grid grid-cols-2 gap-3"><MiniRange label="Intensity" value={effect.intensity} onChange={(intensity) => updateDraftEffect(meta.id, { intensity })} /><MiniRange label="Speed" value={effect.speed} onChange={(speed) => updateDraftEffect(meta.id, { speed })} /></div>}</div>;

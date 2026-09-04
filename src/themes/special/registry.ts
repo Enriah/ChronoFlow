@@ -31,50 +31,7 @@ export interface SpecialThemeRemoteRegistry {
   themes: DownloadableSpecialTheme[];
 }
 
-const installedSpecialThemeRegistry: Record<string, SpecialThemeDefinition> = {
-  layla: {
-    themeId: 'layla',
-    allowUserBackground: true,
-    widgetStyleOverride: {
-      backgroundType: 'glass',
-      opacity: 0.58,
-      blur: 14,
-      borderStyle: 'halo',
-      borderEffect: 'none',
-      borderOpacity: 0.5,
-      glowIntensity: 0.32,
-      shadowIntensity: 0.34,
-      surfaceEffect: 'sheen',
-    },
-    allowedEffects: ['layla_star'],
-    exclusiveEffects: ['layla_star'],
-    sidebarOrnament: 'layla-astrolabe',
-    assets: {
-      sidebarChibiUrl: '/special-themes/assets/layla_chibi.png',
-    },
-  },
-  hutao: {
-    themeId: 'hutao',
-    allowUserBackground: true,
-    widgetStyleOverride: {
-      backgroundType: 'glass',
-      opacity: 0.56,
-      blur: 18,
-      borderStyle: 'double',
-      borderEffect: 'none',
-      borderOpacity: 0.52,
-      glowIntensity: 0.28,
-      shadowIntensity: 0.34,
-      surfaceEffect: 'sheen',
-    },
-    allowedEffects: ['crimson_blossom'],
-    exclusiveEffects: ['crimson_blossom'],
-    sidebarOrnament: 'hutao-crimson-branch',
-    assets: {
-      sidebarChibiUrl: '/special-themes/assets/hutao_chibi.png',
-    },
-  },
-};
+let installedSpecialThemeRegistry: Record<string, SpecialThemeDefinition> = {};
 
 const effectIds: VisualEffectType[] = ['aurora', 'rain', 'sakura', 'maple_leaf', 'snow', 'electricity', 'stars', 'matrix', 'fog', 'water_surface', 'crimson_blossom', 'layla_star'];
 const sanitizeEffects = (effects?: VisualEffectType[]) => (effects || []).filter((effect): effect is VisualEffectType => effectIds.includes(effect));
@@ -106,8 +63,8 @@ export function normalizeSpecialThemePackage(input: any, sourceUrl?: string): Do
   };
 }
 
-export function setInstalledSpecialThemes(_themes: DownloadableSpecialTheme[]) {
-  // No-op: special themes are now built-in.
+export function setInstalledSpecialThemes(themes: DownloadableSpecialTheme[]) {
+  installedSpecialThemeRegistry = Object.fromEntries(themes.map((theme) => [theme.theme.id, theme.definition]));
 }
 
 export function getInstalledSpecialThemeDefinitions() {

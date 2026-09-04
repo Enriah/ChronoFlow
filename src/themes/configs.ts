@@ -355,4 +355,4 @@ export const hutaoTheme: ThemeConfig = {
   },
 };
 
-export const themes = [minimalTheme, neonTheme, terminalTheme, softTheme, fantasyTheme, mapleTheme, sakuraTheme, galaxyTheme, oceanTheme, laylaTheme, hutaoTheme];
+export const themes = [minimalTheme, neonTheme, terminalTheme, softTheme, fantasyTheme, mapleTheme, sakuraTheme, galaxyTheme, oceanTheme];

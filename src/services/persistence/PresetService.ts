@@ -3,11 +3,9 @@ import { useAudioStore } from '../../store/useAudioStore';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../store/useAppStore';
 import { useWorkSessionStore } from '../../core/sessions/useWorkSessionStore';
-import { useSessionTemplateStore } from '../../features/session-templates/useSessionTemplateStore';
 import { useDeveloperActionStore } from '../../features/developer-actions/useDeveloperActionStore';
 import { LocalStorageService } from './storage';
 import type { WorkSession } from '../../models/WorkSession';
-import type { WorkSessionTemplate } from '../../models/WorkSessionTemplate';
 import type { LinkedAction } from '../../models/LinkedAction';
 
 interface SystemBackup {
@@ -15,7 +13,7 @@ interface SystemBackup {
   theme: { activeEnvironment: any; savedPresets: any[] };
   audio: { assignments: any; globalVolume: number; eventSettings: any };
   planner: { tasks: any[] }; app: { schedules: any[] };
-  sessions?: WorkSession[]; templates?: WorkSessionTemplate[]; actions?: LinkedAction[];
+  sessions?: WorkSession[]; actions?: LinkedAction[];
 }
 
 export const PresetService = {
@@ -27,7 +25,6 @@ export const PresetService = {
       audio: { assignments: audio.assignments, globalVolume: audio.globalVolume, eventSettings: audio.eventSettings },
       planner: { tasks: usePlannerStore.getState().tasks }, app: { schedules: useAppStore.getState().schedules },
       sessions: useWorkSessionStore.getState().sessions,
-      templates: useSessionTemplateStore.getState().templates,
       actions: useDeveloperActionStore.getState().actions,
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
@@ -42,7 +39,6 @@ export const PresetService = {
     usePlannerStore.setState({ tasks: backup.planner.tasks }); LocalStorageService.savePlannedTasks(backup.planner.tasks);
     useAppStore.setState({ schedules: backup.app.schedules }); LocalStorageService.saveSchedules(backup.app.schedules);
     if (Array.isArray(backup.sessions)) { useWorkSessionStore.setState({ sessions: backup.sessions, activeSession: backup.sessions.find((session) => ['running', 'paused', 'overdue'].includes(session.status)) || null }); LocalStorageService.saveWorkSessions(backup.sessions); }
-    if (Array.isArray(backup.templates)) { useSessionTemplateStore.setState({ templates: backup.templates }); LocalStorageService.saveSessionTemplates(backup.templates); }
     if (Array.isArray(backup.actions)) { useDeveloperActionStore.setState({ actions: backup.actions }); localStorage.setItem('chronoflow_developer_actions_v2', JSON.stringify(backup.actions)); }
     useAppStore.getState().hydrate();
   },

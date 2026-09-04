@@ -93,7 +93,7 @@ export const useWorkSessionStore = create<WorkSessionState>((set, get) => {
       const session: WorkSession = {
         id: crypto.randomUUID(), title: draft.title.trim() || 'Untitled session',
         description: draft.description, project: draft.project, tags: draft.tags || [],
-        templateId: draft.templateId, plannedDurationMinutes: Math.max(1, draft.plannedDurationMinutes),
+        plannedDurationMinutes: Math.max(1, draft.plannedDurationMinutes),
         totalPausedMs: 0, status: 'planned', actions: draft.actions || [],
         flowSteps: cloneSteps(draft.flowSteps), notes: draft.notes || '', interruptions: 0,
         timelineTracks: draft.timelineTracks || [], timelineEvents: cloneTimeline(draft.timelineEvents),
@@ -112,7 +112,7 @@ export const useWorkSessionStore = create<WorkSessionState>((set, get) => {
     },
     duplicate: (id) => {
       const source = get().sessions.find((session) => session.id === id); if (!source) return null;
-      return get().create({ ...source, title: `${source.title} copy`, templateId: undefined, flowSteps: source.flowSteps, notes: source.notes });
+      return get().create({ ...source, title: `${source.title} copy`, flowSteps: source.flowSteps, notes: source.notes });
     },
     remove: (id) => {
       if (get().activeSession?.id === id) return;

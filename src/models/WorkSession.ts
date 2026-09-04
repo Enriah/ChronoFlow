@@ -5,7 +5,6 @@ export type WorkSessionStatus = 'planned' | 'running' | 'paused' | 'completed' |
 
 export type WorkSession = {
   id: string;
-  templateId?: string;
   sourcePlannerTaskId?: string;
   title: string;
   description?: string;
